@@ -1,0 +1,13 @@
+- name: Gather device information for {{ part_path }}
+  aursu.general.dev_info:
+    dev: "{{ part_path }}"
+  register: dev_info
+
+- debug: var=dev_info
+  when: debug_mode | default(false)
+
+- name: Validate that {{ part_path }} exists and is not formatted with a filesystem
+  ansible.builtin.assert:
+    that:
+      - part_path | validate_lvm_partition(dev_info)
+    fail_msg: "Partition {{ part_path }} is not valid for LVM usage."

@@ -1,0 +1,20 @@
+- name: Determine if partitions input should be processed
+  ansible.builtin.set_fact:
+    process_volumes: "{{ volumes is defined and volumes | length > 0 }}"
+
+- block:
+    - name: Validate input and prerequisites
+      import_tasks: validate.yml
+
+    - name: Process each entity defined in volumes
+      ansible.builtin.include_tasks: create_lv.yml
+      loop: "{{ volumes }}"
+      loop_control:
+        loop_var: lv
+        label: "{{ lv.name }}"
+  when: process_volumes
+
+- block:
+    - debug: msg="Skip processing if volumes variable is undefined or empty"
+      when: debug_mode | default(false)
+  when: not process_volumes

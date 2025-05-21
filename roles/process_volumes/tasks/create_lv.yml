@@ -1,0 +1,61 @@
+- name: Set logical volume {{ lv.vg }}/{{ lv.name }} path
+  ansible.builtin.set_fact:
+    lv_path: "/dev/{{ lv.vg }}/{{ lv.name }}"
+
+- name: Get current LVM info
+  aursu.general.lvm_info:
+    filter: vgs,lvs
+  register: lvm_info
+
+- debug: var=lvm_info
+  when: debug_mode | default(false)
+
+- name: Get device info for {{ lv_path }}
+  aursu.general.dev_info:
+    dev: "{{ lv_path }}"
+  register: dev_info
+
+- debug: var=dev_info
+  when: debug_mode | default(false)
+
+- name: Validate requested logical volume {{ lv_path }}
+  ansible.builtin.set_fact:
+    lv_plan: "{{ lv | validate_volume(lvm_info, dev_info) }}"
+
+- debug: var=lv_plan
+  when: debug_mode | default(false)
+
+- name: Create logical volume {{ lv_path }}
+  community.general.lvol:
+    vg: "{{ lv.vg }}"
+    lv: "{{ lv.name }}"
+    size: "{{ lv.size }}"
+    shrink: false
+    resizefs: false
+  when: lv_plan.action == "create"
+
+- name: Create filesystem on {{ lv_path }}
+  community.general.filesystem:
+    fstype: "{{ lv.filesystem }}"
+    dev: "{{ lv_plan.path }}"
+  when:
+    - lv.filesystem is defined
+    - lv_plan.action in ["create", "format"]
+
+- name: Ensure mount point exists
+  ansible.builtin.file:
+    path: "{{ lv.mountpoint }}"
+    state: directory
+    mode: '0755'
+  when: lv.mountpoint is defined
+
+- name: Mount logical volume
+  ansible.posix.mount:
+    path: "{{ lv.mountpoint }}"
+    src: "{{ lv_plan.path }}"
+    fstype: "{{ lv.filesystem }}"
+    state: mounted
+  when:
+    - lv.filesystem is defined
+    - lv.mountpoint is defined
+    - not (lv | validate_mount(dev_info))

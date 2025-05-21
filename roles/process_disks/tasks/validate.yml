@@ -1,0 +1,22 @@
+- name: Validate structure of partitions input
+  ansible.builtin.assert:
+    that:
+      - partitions | validate_partitions_input
+    fail_msg: "Invalid structure in 'partitions' input."
+
+- name: Check existence of specified disks
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: disk_stat
+  loop: "{{ partitions.keys() }}"
+
+- debug: var=disk_stat
+  when: debug_mode | default(false)
+
+- name: Fail if disk does not exist
+  ansible.builtin.fail:
+    msg: "The specified disk {{ item.item }} does not exist on the system."
+  when: not item.stat.exists
+  loop: "{{ disk_stat.results }}"
+  loop_control:
+    label: "{{ item.item }}"

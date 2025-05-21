@@ -1,0 +1,48 @@
+- name: Fail if no partitions defined for {{ disk }}
+  ansible.builtin.fail:
+    msg: "No partitions defined in 'partitions' variable for {{ disk }}"
+  when: parts | length == 0
+
+- name: Get current partition table for {{ disk }}
+  community.general.parted:
+    device: "{{ disk }}"
+    unit: MiB
+    state: info
+  register: parted_info
+
+- debug: var=parted_info
+  when: debug_mode | default(false)
+
+- name: Validate requested partitions on {{ disk }}
+  ansible.builtin.assert:
+    that:
+      - parted_info | validate_partitions_exist(parts)
+    fail_msg: "Invalid structure in 'partitions' input."
+
+- name: Validate each partition on {{ disk }} for LVM compatibilty
+  ansible.builtin.include_tasks: validate_partition.yml
+  loop: "{{ parts }}"
+  loop_control:
+    label: "Partition {{ part.num }}"
+    loop_var: part
+  vars:
+    part_path: "{{ disk | partition_path(part.num) }}"
+
+- name: Set full path for each partition
+  ansible.builtin.set_fact:
+    pv_paths: "{{ disk | partition_paths(parts) }}"
+
+- name: Get current physical volume information
+  aursu.general.lvm_info:
+    filter: pvs
+  register: lvm_info
+
+- debug: var=lvm_info
+  when: debug_mode | default(false)
+
+- name: Validate physical volumes for {{ vg_name }}
+  ansible.builtin.set_fact:
+    validated_pvs: "{{ lvm_info | validate_pvs(pv_paths, vg_name) }}"
+
+- debug: var=validated_pvs
+  when: debug_mode | default(false)

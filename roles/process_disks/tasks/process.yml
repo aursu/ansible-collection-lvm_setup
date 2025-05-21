@@ -1,0 +1,33 @@
+- name: Get current partition table for {{ disk }}
+  community.general.parted:
+    device: "{{ disk }}"
+    unit: MiB
+    state: info
+  register: parted_info
+
+- debug: var=parted_info
+  when: debug_mode | default(false)
+
+- name: Validate requested partitions on {{ disk }}
+  ansible.builtin.set_fact:
+    validated_partitions: "{{ parted_info | validate_partitions(parts) }}"
+
+- debug: var=validated_partitions
+  when: debug_mode | default(false)
+
+- name: Create missing partitions on {{ disk }}
+  community.general.parted:
+    device: "{{ disk }}"
+    label: "{{ part.disk_label }}"
+    number: "{{ part.num }}"
+    unit: "MiB"
+    part_start: "{{ part.part_start }}"
+    part_end: "{{ part.part_end }}"
+    flags:
+      - lvm
+    state: present
+  loop: "{{ validated_partitions }}"
+  loop_control:
+    label: "Partition {{ part.num }}"
+    loop_var: part
+  when: part.action == 'create'
