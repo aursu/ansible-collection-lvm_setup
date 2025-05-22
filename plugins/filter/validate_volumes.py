@@ -1,8 +1,5 @@
-import sys
-import os
 from ansible.errors import AnsibleFilterError
-
-from utils import to_mib, mib
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.conv import to_mib
 
 def validate_lv(lv, idx=0):
     if not isinstance(lv, dict):

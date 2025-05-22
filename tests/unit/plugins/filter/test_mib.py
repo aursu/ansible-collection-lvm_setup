@@ -1,6 +1,6 @@
 import pytest
 from ansible.errors import AnsibleFilterError
-from plugins.filter.utils import (
+from plugins.plugin_utils.conv import (
     to_mib,
     mib
 )

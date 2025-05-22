@@ -1,102 +1,11 @@
-import sys
-import os
 from ansible.errors import AnsibleFilterError
 
-from utils import to_mib, mib
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.conv import (
+    to_mib,
+    mib
+)
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.path import partition_path
 
-def partition_path(disk, number):
-    """
-    Return full partition device path for a given disk and partition number.
-    Examples:
-      - /dev/sda, 1        → /dev/sda1
-      - /dev/nvme0n1, 1    → /dev/nvme0n1p1
-    """
-    return f"{disk}p{number}" if "nvme" in disk else f"{disk}{number}"
-
-def partition_paths(disk, parts):
-    """
-    Generate full partition paths for a given disk and list of partition entries.
-
-    Each entry in `parts` must be a dictionary containing the key 'num' (partition number).
-    The resulting path is generated using standard naming conventions:
-    - For SATA/SCSI disks: /dev/sda + 1 → /dev/sda1
-    - For NVMe disks: /dev/nvme0n1 + 1 → /dev/nvme0n1p1
-
-    Args:
-        disk (str): Base disk path (e.g. /dev/sda or /dev/nvme0n1).
-        parts (list): List of partition dictionaries, each with a 'num' key.
-
-    Returns:
-        list[str]: List of full partition paths.
-    """
-    return [partition_path(disk, p["num"]) for p in parts]
-
-def validate_partitions_input(partitions, allow_gaps=False):
-    if not isinstance(partitions, dict):
-        raise AnsibleFilterError("Expected 'partitions' to be a dictionary.")
-
-    for disk, parts in partitions.items():
-        if not isinstance(parts, list):
-            raise AnsibleFilterError(f"Expected a list of partitions for device '{disk}', got {type(parts).__name__}.")
-
-        tracked_nums = set()
-
-        for idx, part in enumerate(parts):
-            is_last = idx == len(parts) - 1
-
-            if not isinstance(part, dict):
-                raise AnsibleFilterError(f"Each partition entry for '{disk}' must be a dictionary. Found: {part}")
-
-            num = part.get("num")
-
-            if num is None:
-                raise AnsibleFilterError(f"Missing 'num' field in partition #{idx+1} for disk '{disk}'.")
-
-            if not isinstance(num, int):
-                raise AnsibleFilterError(f"'num' must be an integer in partition #{idx+1} for disk '{disk}'. Got: {num}")
-
-            if num in tracked_nums:
-                raise AnsibleFilterError(f"Duplicate partition number {num} on disk '{disk}'.")
-
-            tracked_nums.add(num)
-
-            size = part.get("size")
-            if size is None:
-                if not is_last:
-                    raise AnsibleFilterError(f"Missing 'size' field for partition #{num} for disk '{disk}'.")
-            else: 
-                if to_mib(size) < 0:
-                    raise AnsibleFilterError(
-                        f"Expected positive 'size' field for partition #{num} for disk '{disk}'. Got: {size}"
-                    )
-
-        if not allow_gaps:
-            num_min = min(tracked_nums)
-            num_max = max(tracked_nums)
-            if len(tracked_nums) <= (num_max - num_min):
-                raise AnsibleFilterError(
-                    f"Partition numbers on disk '{disk}' have gaps: {sorted(tracked_nums)}."
-                )
-    return True
-
-def partition_paths_all(partitions):
-    """
-    Extract all partition paths from validated `partitions` dictionary.
-
-    For example:
-      partitions = {
-          "/dev/sda": [{"num": 1}, {"num": 2}],
-          "/dev/nvme0n1": [{"num": 1}]
-      }
-
-      → "/dev/sda1,/dev/sda2,/dev/nvme0n1p1"
-    """
-    validate_partitions_input(partitions)
-
-    result = []
-    for disk, parts in partitions.items():
-        result.extend(partition_paths(disk, parts))
-    return ",".join(result)
 
 def validate_partitions(parted_info, parts, default_label="gpt", require_existing=False):
     results = []
@@ -244,10 +153,6 @@ def validate_partitions_exist(parted_info, parts, default_label="gpt"):
 class FilterModule(object):
     def filters(self):
         return {
-            "partition_path": partition_path,
-            "partition_paths": partition_paths,
-            "partition_paths_all": partition_paths_all,
             "validate_partitions": validate_partitions,
-            "validate_partitions_input": validate_partitions_input,
             "validate_partitions_exist": validate_partitions_exist
         }
