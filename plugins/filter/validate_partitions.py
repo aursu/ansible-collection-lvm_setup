@@ -1,10 +1,10 @@
 from ansible.errors import AnsibleFilterError
 
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.conv import (
+from ansible_collections.aursu.lvm_setup.plugins.module_utils.size_utils import (
     to_mib,
     mib
 )
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.path import partition_path
+from ansible_collections.aursu.lvm_setup.plugins.module_utils.partition_utils import partition_path
 
 
 def validate_partitions(parted_info, parts, default_label="gpt", require_existing=False):

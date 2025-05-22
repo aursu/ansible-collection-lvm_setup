@@ -1,6 +1,6 @@
 from ansible.errors import AnsibleFilterError
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.path import partition_paths
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.conv import to_mib
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import _filter_partition_paths as partition_paths
+from ansible_collections.aursu.lvm_setup.plugins.module_utils.size_utils import to_mib
 
 def validate_partitions_input(partitions, allow_gaps=False):
     if not isinstance(partitions, dict):

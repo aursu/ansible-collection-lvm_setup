@@ -1,5 +1,5 @@
 from ansible.errors import AnsibleFilterError
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.conv import to_mib
+from ansible_collections.aursu.lvm_setup.plugins.module_utils.size_utils import to_mib
 
 def validate_lv(lv, idx=0):
     if not isinstance(lv, dict):
