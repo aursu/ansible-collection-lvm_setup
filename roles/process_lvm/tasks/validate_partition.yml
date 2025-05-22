@@ -9,5 +9,5 @@
 - name: Validate that {{ part_path }} exists and is not formatted with a filesystem
   ansible.builtin.assert:
     that:
-      - part_path | validate_lvm_partition(dev_info)
+      - part_path | aursu.lvm_setup.validate_lvm_partition(dev_info)
     fail_msg: "Partition {{ part_path }} is not valid for LVM usage."

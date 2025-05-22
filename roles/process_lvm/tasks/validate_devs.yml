@@ -1,7 +1,7 @@
 - name: Validate structure of partitions input
   ansible.builtin.assert:
     that:
-      - partitions | validate_partitions_input
+      - partitions | aursu.lvm_setup.validate_partitions_input
     fail_msg: "Invalid structure in 'partitions' input."
 
 - name: Check existence of specified disks

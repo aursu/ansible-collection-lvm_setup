@@ -16,7 +16,7 @@
 - name: Validate requested partitions on {{ disk }}
   ansible.builtin.assert:
     that:
-      - parted_info | validate_partitions_exist(parts)
+      - parted_info | aursu.lvm_setup.validate_partitions_exist(parts)
     fail_msg: "Invalid structure in 'partitions' input."
 
 - name: Validate each partition on {{ disk }} for LVM compatibilty
@@ -26,11 +26,11 @@
     label: "Partition {{ part.num }}"
     loop_var: part
   vars:
-    part_path: "{{ disk | partition_path(part.num) }}"
+    part_path: "{{ disk | aursu.lvm_setup.partition_path(part.num) }}"
 
 - name: Set full path for each partition
   ansible.builtin.set_fact:
-    pv_paths: "{{ disk | partition_paths(parts) }}"
+    pv_paths: "{{ disk | aursu.lvm_setup.partition_paths(parts) }}"
 
 - name: Get current physical volume information
   aursu.general.lvm_info:
@@ -42,7 +42,7 @@
 
 - name: Validate physical volumes for {{ vg_name }}
   ansible.builtin.set_fact:
-    validated_pvs: "{{ lvm_info | validate_pvs(pv_paths, vg_name) }}"
+    validated_pvs: "{{ lvm_info | aursu.lvm_setup.validate_pvs(pv_paths, vg_name) }}"
 
 - debug: var=validated_pvs
   when: debug_mode | default(false)

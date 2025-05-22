@@ -10,7 +10,7 @@
 
 - name: Validate requested partitions on {{ disk }}
   ansible.builtin.set_fact:
-    validated_partitions: "{{ parted_info | validate_partitions(parts) }}"
+    validated_partitions: "{{ parted_info | aursu.lvm_setup.validate_partitions(parts) }}"
 
 - debug: var=validated_partitions
   when: debug_mode | default(false)

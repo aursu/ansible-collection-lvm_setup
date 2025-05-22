@@ -1,7 +1,7 @@
 - name: Validate structure of volumes input
   ansible.builtin.assert:
     that:
-      - volumes | validate_volumes_input
+      - volumes | aursu.lvm_setup.validate_volumes_input
     fail_msg: "Invalid structure in 'volumes' input."
 
 - name: Get current LVM info
@@ -15,5 +15,5 @@
 - name: Validate if Volume group exists
   ansible.builtin.assert:
     that:
-      - vg_name | validate_vg(lvm_info)
+      - vg_name | aursu.lvm_setup.validate_vg(lvm_info)
     fail_msg: "Volume group {{ vg_name }} not found in system."

@@ -20,7 +20,7 @@
 
 - name: Validate requested logical volume {{ lv_path }}
   ansible.builtin.set_fact:
-    lv_plan: "{{ lv | validate_volume(lvm_info, dev_info) }}"
+    lv_plan: "{{ lv | aursu.lvm_setup.validate_volume(lvm_info, dev_info) }}"
 
 - debug: var=lv_plan
   when: debug_mode | default(false)
@@ -58,4 +58,4 @@
   when:
     - lv.filesystem is defined
     - lv.mountpoint is defined
-    - not (lv | validate_mount(dev_info))
+    - not (lv | aursu.lvm_setup.validate_mount(dev_info))
