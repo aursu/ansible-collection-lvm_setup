@@ -1,0 +1,11 @@
+- name: Create LVM setup on host
+  hosts: all
+  become: true
+
+  vars:
+    debug_mode: false
+
+  roles:
+    - aursu.lvm_setup.process_disks
+    - aursu.lvm_setup.process_lvm
+    - aursu.lvm_setup.process_volumes
