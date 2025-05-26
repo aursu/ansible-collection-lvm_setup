@@ -31,15 +31,3 @@ def to_mib(value):
         raise AnsibleFilterError(
             f"Unsupported or invalid size format: '{value}'. Only 'm', 'g', and 't' binary units are supported."
         )
-
-# 1. The argument 'part_start' doesn't respect required format.The size unit is case sensitive.
-# 2. Error: You requested a partition from 60208MiB to 915715MiB (sectors 123305984..1875385007).
-#    The closest location we can manage is 60208MiB to 915715MiB (sectors 123305992..1875384974).
-# 3. Warning: The resulting partition is not properly aligned for best performance: 123305992s % 2048s != 0s
-def mib(value, align=0, unit="MiB"):
-    if isinstance(value, str):
-        value = value.strip()
-        if value.endswith("%"):
-            return value
-        value = float(value)
-    return f"{int(value + align)}{unit}"
