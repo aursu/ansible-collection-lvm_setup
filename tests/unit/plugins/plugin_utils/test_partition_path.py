@@ -1,5 +1,6 @@
 import unittest
-from ansible_collections.your_namespace.your_collection.plugins.plugin_utils.filter_helpers import Partition
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import Partition
+
 
 class TestPartitionPath(unittest.TestCase):
     """Unit tests for Partition.path() method with different disk types and edge cases."""
