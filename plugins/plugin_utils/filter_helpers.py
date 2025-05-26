@@ -163,7 +163,7 @@ class Partition(SizeInterface):
         self._msg_for = f" for partition #{idx+1}"
 
     def set_disk(self, disk=None):
-        if disk is None:
+        if disk is None or not disk.startswith('/dev/'):
             return
         self._disk = disk
         self._disk_msg = f" for disk '{disk}'"
@@ -203,17 +203,17 @@ class Partition(SizeInterface):
         self.validate_num()
         self.validate_size(required=(not self.is_last()), context=f"{self._msg_for}{self._disk_msg}")
     
-    def path(self, disk=None):
+    def path(self, disk: Optional[str] = None):
         """
         Return full partition device path for a given disk and partition number.
         Examples:
         - /dev/sda, 1        → /dev/sda1
         - /dev/nvme0n1, 1    → /dev/nvme0n1p1
         """
-        disk = self._disk if disk is None else disk
+        disk = self._disk if disk is None or not disk.startswith('/dev/') else None
         if disk is None or self.num is None:
             return None
-        return f"{disk}p{self.num}" if disk.startswith('nvme') else f"{disk}{self.num}"
+        return f"{disk}p{self.num}" if disk.startswith('/dev/nvme') else f"{disk}{self.num}"
 
     def plan_template(self) -> dict:
         """
