@@ -1,16 +1,18 @@
 from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import Disk
 
-def validate_partitions(parted_info, parts, default_label="gpt"):
+def validate_partitions_exist(parted_info, parts, default_label="gpt"):
     disk = Disk.from_parted(parted_info)
 
     req = Disk(disk.disk, parts)
     req.set_state(disk)
     req.set_table(default_label)
     
-    return req.plan(required=False)
+    req.plan(required=True)
+
+    return True
 
 class FilterModule(object):
     def filters(self):
         return {
-            "validate_partitions": validate_partitions,
+            "validate_partitions_exist": validate_partitions_exist
         }

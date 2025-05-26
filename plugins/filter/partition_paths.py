@@ -1,4 +1,7 @@
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import _filter_partition_paths as partition_paths
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import Disk
+
+def partition_paths(disk, parts):
+    return Disk(disk, parts).paths()
 
 class FilterModule(object):
     def filters(self):
