@@ -87,7 +87,7 @@ class SizeInterface(ABC):
         self._assert_size("size", self._size, self.size, required, context)
 
 class Partition(SizeInterface):
-    def __init__(self, part_data, id=None, disk=None):
+    def __init__(self, part_data, idx=None, disk=None):
         if not isinstance(part_data, dict):
             raise AnsibleFilterError(f"Partition entry must be a dictionary. Found: {part_data}")
 
@@ -120,7 +120,7 @@ class Partition(SizeInterface):
         self._set_begin(part_data)
         self._set_end(part_data)
 
-        self.set_id(id)
+        self.set_index(idx)
         self.set_disk(disk)
 
         # previous and next partitions
@@ -156,11 +156,11 @@ class Partition(SizeInterface):
     def _set_end(self, part_data):
         self._end, self.end = self._convert_size(part_data, "end")
     
-    def set_id(self, id=None):
-        if not isinstance(id, int):
+    def set_index(self, idx=None):
+        if not isinstance(idx, int):
             return
-        self._msg_in = f" in partition #{id+1}"
-        self._msg_for = f" for partition #{id+1}"
+        self._msg_in = f" in partition #{idx+1}"
+        self._msg_for = f" for partition #{idx+1}"
 
     def set_disk(self, disk=None):
         if disk is None:

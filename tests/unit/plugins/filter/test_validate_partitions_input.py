@@ -1,6 +1,6 @@
 import pytest
-from plugins.filter.validate_partitions import validate_partitions_input
 from ansible.errors import AnsibleFilterError
+from ansible_collections.aursu.lvm_setup.plugins.filter.validate_partitions_input import validate_partitions_input
 
 def test_valid_partitions_without_gaps():
     partitions = {

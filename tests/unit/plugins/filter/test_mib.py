@@ -1,9 +1,6 @@
 import pytest
 from ansible.errors import AnsibleFilterError
-from plugins.plugin_utils.conv import (
-    to_mib,
-    mib
-)
+from ansible_collections.aursu.lvm_setup.plugins.module_utils.size_utils import to_mib
 
 def test_to_mib_with_valid_units():
     assert to_mib("512m") == 512.0
@@ -20,15 +17,3 @@ def test_to_mib_with_invalid_unit():
 def test_to_mib_with_invalid_type():
     with pytest.raises(AnsibleFilterError, match="Invalid type for size"):
         to_mib(["not", "a", "string"])
-
-def test_mib_with_numeric_input():
-    assert mib(1024) == "1024MiB"
-    assert mib(1000.0) == "1000MiB"
-    assert mib(1000.0, align=24) == "1024MiB"
-
-def test_mib_with_percentage_string():
-    assert mib("100%") == "100%"
-
-def test_mib_with_string_number():
-    assert mib("1000") == "1000MiB"
-    assert mib("1000", align=48) == "1048MiB"

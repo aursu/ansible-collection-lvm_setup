@@ -1,6 +1,6 @@
 import pytest
-from plugins.filter.validate_partitions import validate_partitions
 from ansible.errors import AnsibleFilterError
+from ansible_collections.aursu.lvm_setup.plugins.filter.validate_partitions import validate_partitions
 
 def parted_info(partitions, size):
     return {

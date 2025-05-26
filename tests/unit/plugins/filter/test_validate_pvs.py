@@ -1,6 +1,6 @@
 import pytest
-from plugins.filter.validate_pvs import validate_pvs
 from ansible.errors import AnsibleFilterError
+from ansible_collections.aursu.lvm_setup.plugins.filter.validate_pvs import validate_pvs
 
 def test_create_when_not_a_pv():
     lvm_info = {"pvs": []}
