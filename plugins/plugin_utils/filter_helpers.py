@@ -294,7 +294,8 @@ class Disk(SizeInterface):
             self.add_part(p)
 
         # keep original input
-        self.raw_parts = sorted_parts
+        self.raw_parts = parts
+        self.raw_disk = {}
 
         # Raw values from parted info (if available)
         self._table = None
@@ -307,6 +308,13 @@ class Disk(SizeInterface):
         if validation:
             self.validate(allow_gaps, allow_empty)
 
+    def from_metadata(self, disk_data):
+        self._set_unit(disk_data)
+        self._set_size(disk_data)
+        self._set_table(disk_data)
+
+        self.raw_disk = disk_data
+
     @classmethod
     def from_parted(cls, parted_info):
         # extract disk and parts from parted_info
@@ -316,10 +324,7 @@ class Disk(SizeInterface):
         parts = parted_info.get("partitions", [])
 
         disk_obj = cls(disk, parts, allow_gaps=True, allow_empty=True)
-
-        disk_obj._set_unit(disk_data)
-        disk_obj._set_size(disk_data)
-        disk_obj._set_table(disk_data)
+        disk_obj.from_metadata(disk_data)
 
         return disk_obj
 
@@ -452,7 +457,8 @@ class Disk(SizeInterface):
         result = []
 
         # copy state into tmp object
-        state = Disk(self.state.disk, self.state.raw_parts, allow_gaps=True, allow_empty=True)
+        state = Disk.from_parted({"disk": self.state.raw_disk, "partitions": self.state.raw_parts})
+        state.validate_size()
 
         for p in self._parts:
             plan = p.plan(required)
