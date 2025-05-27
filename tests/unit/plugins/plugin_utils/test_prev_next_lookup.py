@@ -12,7 +12,7 @@ class TestDiskSetSize(unittest.TestCase):
         self.dev = Disk(self.state.disk, parts)
     
     def test_prev_next_lookup(self):
-        self.assertEqual(self.dev.prev_next_lookup(self.state, 1), [None, None])
+        self.assertEqual(self.dev.prev_next_lookup(self.state, 1), (None, None))
 
 if __name__ == '__main__':
     unittest.main()
