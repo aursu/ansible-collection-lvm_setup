@@ -274,7 +274,7 @@ class Partition(SizeInterface):
         return plan
 
 class Disk(SizeInterface):
-    def __init__(self, disk, parts, allow_gaps=False, allow_empty=False):
+    def __init__(self, disk, parts, validation=True, allow_gaps=False, allow_empty=False):
         if not isinstance(parts, list):
             raise AnsibleFilterError(f"Expected a list of partitions for device '{disk}', got {type(parts).__name__}.")
 
@@ -305,7 +305,8 @@ class Disk(SizeInterface):
         # Actual disk state
         self.state: Optional["Disk"] = None
 
-        self.validate(allow_gaps, allow_empty)
+        if validation:
+            self.validate(allow_gaps, allow_empty)
 
     @classmethod
     def from_parted(cls, parted_info):
@@ -513,14 +514,10 @@ class Disk(SizeInterface):
         return result
 
 class PartitionInput:
-    def __init__(self, partitions):
+    def __init__(self, partitions, allow_gaps=False):
         if not isinstance(partitions, dict):
             raise AnsibleFilterError("Expected 'partitions' to be a dictionary.")
-        self._disks = [Disk(disk, parts) for disk, parts in partitions.items()]
-
-    def validate(self, allow_gaps=False):
-        for disk in self._disks:
-            disk.validate(allow_gaps)
+        self._disks = [Disk(disk, parts, allow_gaps=allow_gaps) for disk, parts in partitions.items()]
     
     def paths(self):
         result = []

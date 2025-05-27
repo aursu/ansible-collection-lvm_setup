@@ -1,7 +1,7 @@
 from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import PartitionInput
 
 def validate_partitions_input(partitions, allow_gaps=False):
-    PartitionInput(partitions).validate(allow_gaps)
+    PartitionInput(partitions, allow_gaps=allow_gaps)
     return True
 
 class FilterModule(object):
