@@ -54,7 +54,7 @@ def test_duplicate_partition_num():
             {'num': 1}
         ]
     }
-    with pytest.raises(AnsibleFilterError, match="Duplicate partition number 1 on disk '/dev/sda'"):
+    with pytest.raises(AnsibleFilterError, match="Duplicate partition number 1 detected on disk '/dev/sda'"):
         validate_partitions_input(partitions)
 
 def test_partition_numbers_have_gaps():
