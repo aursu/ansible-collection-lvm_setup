@@ -231,7 +231,6 @@ class Partition(SizeInterface):
             "part_end": self.state.end if self.state else "",
         }
 
-
     def plan(self, required=False):
         """
         Generate a partition plan for an existing partition based on its real disk state.
@@ -324,12 +323,16 @@ class Disk(SizeInterface):
 
         return disk_obj
 
-    def set_state(self, parted_info: dict):
-        self.state = Disk.from_parted(parted_info)
+    def set_state_disk(self, state: "Disk"):
+        self.state = state
         for p in self._parts:
             p.set_state(self.state.parts_by_num(p.num))
         # set table to its actual value
         self.set_table(self.state.table)
+
+    def set_state(self, parted_info: dict):
+        state = Disk.from_parted(parted_info)
+        self.set_state_disk(state)
 
     def parts_by_num(self, num=None):
         """
@@ -402,6 +405,7 @@ class Disk(SizeInterface):
                 raise AnsibleFilterError(
                     f"Partition numbers on disk '{self.disk}' contain gaps: {sorted(self._tracked_nums)}."
                 )
+        return True
 
     def paths(self):
         """
