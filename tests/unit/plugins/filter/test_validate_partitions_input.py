@@ -65,5 +65,5 @@ def test_partition_numbers_have_gaps():
             {'num': 4}
         ]
     }
-    with pytest.raises(AnsibleFilterError, match="Partition numbers on disk '/dev/sda' have gaps"):
+    with pytest.raises(AnsibleFilterError, match="Partition numbers on disk '/dev/sda' contain gaps"):
         validate_partitions_input(partitions, allow_gaps=False)
