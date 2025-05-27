@@ -210,7 +210,7 @@ class Partition(SizeInterface):
         - /dev/sda, 1        → /dev/sda1
         - /dev/nvme0n1, 1    → /dev/nvme0n1p1
         """
-        disk = self._disk if disk is None or not disk.startswith('/dev/') else None
+        disk = self._disk if disk is None or not disk.startswith('/dev/') else disk
         if disk is None or self.num is None:
             return None
         return f"{disk}p{self.num}" if disk.startswith('/dev/nvme') else f"{disk}{self.num}"
