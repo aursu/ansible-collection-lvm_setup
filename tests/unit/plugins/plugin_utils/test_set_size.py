@@ -7,11 +7,11 @@ class TestDiskSetSize(unittest.TestCase):
             "disk": {"size": 4096.0, "dev": "/dev/sda"},
             "partitions": []
         }
-        self.dev = Disk.from_parted(parted_info)
+        self.state = Disk.from_parted(parted_info)
     
     def test_size(self):
-        self.assertEqual(self.dev._size, 4096.0)
-        self.assertEqual(self.dev.size, 4096.0)
+        self.assertEqual(self.state._size, 4096.0)
+        self.assertEqual(self.state.size, 4096.0)
 
 if __name__ == '__main__':
     unittest.main()

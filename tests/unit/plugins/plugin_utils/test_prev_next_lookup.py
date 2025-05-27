@@ -9,6 +9,7 @@ class TestDiskSetSize(unittest.TestCase):
         }
         parts = [{"num": 1, "size": 1024.0}]
         self.state = Disk.from_parted(parted_info)
+
         self.dev = Disk(self.state.disk, parts)
     
     def test_prev_next_lookup(self):
