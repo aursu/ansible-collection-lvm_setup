@@ -382,8 +382,11 @@ class Disk(SizeInterface):
         self._set_table(table)
 
     def _set_table(self, table):
+        if not isinstance(table, str):
+            self._table = None
+            self.table = None
         # Supported partition tables: aix, amiga, bsd, dvh, gpt, mac, msdos, pc98, sun, atari, loop
-        if table in ["aix", "amiga", "bsd", "dvh", "gpt", "mac", "msdos", "pc98", "sun", "atari", "loop"] or table is None:
+        elif table in ["aix", "amiga", "bsd", "dvh", "gpt", "mac", "msdos", "pc98", "sun", "atari", "loop"]:
             self._table = table
             self.table = table
 
