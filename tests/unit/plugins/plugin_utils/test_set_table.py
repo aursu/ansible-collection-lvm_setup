@@ -34,8 +34,17 @@ class TestDiskSetTable(unittest.TestCase):
 
     def test_set_table(self):
         self.setUpTable()
+        self.assertIsNone(self.state._table)
+        self.assertEqual(self.state.table, "gpt")
         self.assertEqual(self.req._table, "gpt")
         self.assertEqual(self.req.table, "gpt")
+
+    def test_set_table_value(self):
+        self.setUpTable("msdos")
+        self.assertIsNone(self.state._table)
+        self.assertEqual(self.state.table, "gpt")
+        self.assertEqual(self.req._table, "msdos")
+        self.assertEqual(self.req.table, "msdos")
 
 if __name__ == '__main__':
     unittest.main()
