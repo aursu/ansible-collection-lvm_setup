@@ -11,7 +11,7 @@ def parted_info(partitions, size):
 def test_missing_num_field():
     parted = parted_info([], 4096.0)
     parts = [{}]  # no 'num'
-    with pytest.raises(AnsibleFilterError, match=r"missing 'num'"):
+    with pytest.raises(AnsibleFilterError, match=r"Missing 'num' field"):
         validate_partitions(parted, parts)
 
 def test_missing_disk_size():
