@@ -20,7 +20,7 @@ def test_missing_disk_size():
         "partitions": []
     }
     parts = [{"num": 1, "size": 1024.0}]
-    with pytest.raises(AnsibleFilterError, match=r"Disk size information is missing"):
+    with pytest.raises(AnsibleFilterError, match=r"Missing 'size' field."):
         validate_partitions(parted, parts)
 
 def test_existing_partition_with_matching_size():
@@ -69,7 +69,7 @@ def test_create_partition_without_size_before_existing():
         {"num": 2, "begin": 1024.0, "end": 2048.0, "size": 1024.0}
     ], 4096.0)
     requested = [{"num": 1}]
-    with pytest.raises(AnsibleFilterError, match=r"no size specified.*partition 2"):
+    with pytest.raises(AnsibleFilterError, match=r"no 'size' specified and another partition 2"):
         validate_partitions(parted, requested)
 
 def test_existing_partition_without_size_and_no_following():
