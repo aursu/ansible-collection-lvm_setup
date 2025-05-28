@@ -49,16 +49,17 @@ class SizeInterface(ABC):
 
         return size_raw, size_in_mib
     
-    def _assert_size(self, name, raw_value, converted, required=True, context=""):
+    def _assert_size(self, name, raw_value, converted, required=True, allow_zero=False, context=""):
         """
         Assert that a size field is present (if required), convertible, and positive.
 
         Args:
-            name (str): Name of the field (used in error messages).
-            raw_value: Raw size value as received from input.
+            name (str): Field name (used in error messages).
+            raw_value: Raw input value for the size field.
             converted: Size value converted to MiB.
             required (bool): Whether the field must be present.
-            context (str): Optional context for error messages.
+            allow_zero (bool): Whether zero size is acceptable.
+            context (str): Optional context string for error messages.
         """
         if raw_value is None:
             if required:
@@ -71,6 +72,8 @@ class SizeInterface(ABC):
             )
 
         if converted <= 0:
+            if allow_zero and converted == 0:
+                return
             raise AnsibleFilterError(
                 f"Expected positive '{name}' field in 'MiB'{context}. Got: {raw_value}{self._unit_msg}"
             )
@@ -187,6 +190,7 @@ class Partition(SizeInterface):
             self._begin,
             self.begin,
             required=False,
+            allow_zero=True,
             context=f"{self._msg_for}{self._disk_msg}"
         )
 
