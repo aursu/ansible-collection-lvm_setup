@@ -26,7 +26,7 @@ class SizeInterface(ABC):
         return f"{int(value + align)}{unit}"
 
     def _convert_to_mib(self, size, unit):
-        if isinstance(size, (int, float)):
+        if isinstance(size, (int, float, str)):
             if unit is None or unit == "mib":
                 return to_mib(size)
             else:
