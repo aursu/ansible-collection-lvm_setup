@@ -273,6 +273,11 @@ class Partition(SizeInterface):
         return plan
 
 class Disk(SizeInterface):
+    # Supported partition table types based on parted documentation
+    SUPPORTED_TABLES = {
+        "aix", "amiga", "bsd", "dvh", "gpt", "mac", "msdos", "pc98", "sun", "atari", "loop"
+    }
+
     def __init__(self, disk, parts, validation=True, allow_gaps=False, allow_empty=False):
         if not isinstance(parts, list):
             raise AnsibleFilterError(f"Expected a list of partitions for device '{disk}', got {type(parts).__name__}.")
@@ -347,6 +352,8 @@ class Disk(SizeInterface):
 
         for p in self._parts:
             p.set_state(self.state.parts_by_num(p.num))
+        
+        self.set_table(self.state._table)
 
     def parts_by_num(self, num=None):
         """
@@ -378,23 +385,26 @@ class Disk(SizeInterface):
         return sorted(self._parts, key=lambda p: p.num)
 
     def _set_table_meta(self, disk_data):
+        # Extract partition table from raw disk metadata and assign if valid
         table = disk_data.get("table")
         self._set_table(table)
 
     def _set_table(self, table):
-        if not isinstance(table, str):
-            self._table = None
-            self.table = None
-        # Supported partition tables: aix, amiga, bsd, dvh, gpt, mac, msdos, pc98, sun, atari, loop
-        elif table in ["aix", "amiga", "bsd", "dvh", "gpt", "mac", "msdos", "pc98", "sun", "atari", "loop"]:
+        if isinstance(table, str) and table in self.SUPPORTED_TABLES:
             self._table = table
             self.table = table
+        else:
+            self._table = None
+            self.table = None
 
-    def set_table(self, table="gpt"):
-        if self._table:
+    # Sets the partition table type only if it has not already been defined.
+    # This method will not override a value provided by system metadata (e.g., parted).
+    def set_table(self, table="gpt", force=False):
+        if self._table and not force:
             # Do not override the partition table if it was already set from parted info
             return
-        self._set_table(table)
+        if table in self.SUPPORTED_TABLES:
+            self._set_table(table)
 
     def add_part(self, part: Partition):
         self._parts.append(part)
