@@ -1,4 +1,4 @@
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import PartitionInput
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.disks_helpers import PartitionInput
 
 def partition_paths_all(partitions):
     return ",".join(PartitionInput(partitions).paths())

@@ -1,4 +1,4 @@
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import Disk
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.disks_helpers import Disk
 
 def validate_partitions(parted_info, parts, default_label="gpt", require_existing=False):
     state = Disk.from_parted(parted_info)

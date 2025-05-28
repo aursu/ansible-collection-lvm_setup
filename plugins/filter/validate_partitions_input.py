@@ -1,4 +1,4 @@
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import PartitionInput
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.disks_helpers import PartitionInput
 
 def validate_partitions_input(partitions, allow_gaps=False):
     PartitionInput(partitions, allow_gaps=allow_gaps)

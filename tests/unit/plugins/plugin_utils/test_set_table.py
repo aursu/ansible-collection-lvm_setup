@@ -1,5 +1,5 @@
 import unittest
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import Disk
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.disks_helpers import Disk
 
 class TestDiskSetTable(unittest.TestCase):
     def setUp(self):

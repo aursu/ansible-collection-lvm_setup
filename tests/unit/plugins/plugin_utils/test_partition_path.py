@@ -1,5 +1,5 @@
 import unittest
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import Partition
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.disks_helpers import Partition
 
 
 class TestPartitionPath(unittest.TestCase):

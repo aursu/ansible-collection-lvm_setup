@@ -1,5 +1,5 @@
 import unittest
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.filter_helpers import SizeInterface
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.disks_helpers import SizeInterface
 
 class Device(SizeInterface):
     def __init__(self):
