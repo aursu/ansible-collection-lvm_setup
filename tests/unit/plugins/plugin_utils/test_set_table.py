@@ -21,7 +21,7 @@ class TestDiskSetTable(unittest.TestCase):
     
     def test_state_table(self):
         self.assertIsNone(self.state._table)
-        self.assertEqual(self.state.table, "gpt")
+        self.assertIsNone(self.state.table)
 
     def test_req_table(self):
         self.assertIsNone(self.req._table)
@@ -35,14 +35,14 @@ class TestDiskSetTable(unittest.TestCase):
     def test_set_table(self):
         self.setUpTable()
         self.assertIsNone(self.state._table)
-        self.assertEqual(self.state.table, "gpt")
+        self.assertIsNone(self.state.table)
         self.assertEqual(self.req._table, "gpt")
         self.assertEqual(self.req.table, "gpt")
 
     def test_set_table_value(self):
         self.setUpTable("msdos")
         self.assertIsNone(self.state._table)
-        self.assertEqual(self.state.table, "gpt")
+        self.assertIsNone(self.state.table)
         self.assertEqual(self.req._table, "msdos")
         self.assertEqual(self.req.table, "msdos")
 
