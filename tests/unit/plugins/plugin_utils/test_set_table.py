@@ -15,6 +15,10 @@ class TestDiskSetTable(unittest.TestCase):
     def setUpLinked(self):
         self.req.set_state_disk(self.state)
     
+    def setUpTable(self, default_label="gpt"):
+        self.setUpLinked()
+        self.req.set_table(default_label)
+    
     def test_state_table(self):
         self.assertIsNone(self.state._table)
         self.assertEqual(self.state.table, "gpt")
@@ -26,6 +30,11 @@ class TestDiskSetTable(unittest.TestCase):
     def test_linked_req_table(self):
         self.setUpLinked()
         self.assertIsNone(self.req._table)
+        self.assertEqual(self.req.table, "gpt")
+
+    def test_set_table(self):
+        self.setUpTable()
+        self.assertEqual(self.req._table, "gpt")
         self.assertEqual(self.req.table, "gpt")
 
 if __name__ == '__main__':
