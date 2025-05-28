@@ -12,11 +12,19 @@ class TestDiskSetTable(unittest.TestCase):
         self.state = Disk.from_parted(parted_info)
         self.req = Disk(self.state.disk, parts)
     
+    def setUpLinked(self):
+        self.req.set_state_disk(self.state)
+    
     def test_state_table(self):
         self.assertIsNone(self.state._table)
         self.assertEqual(self.state.table, "gpt")
 
     def test_req_table(self):
+        self.assertIsNone(self.req._table)
+        self.assertEqual(self.req.table, "gpt")
+
+    def test_linked_req_table(self):
+        self.setUpLinked()
         self.assertIsNone(self.req._table)
         self.assertEqual(self.req.table, "gpt")
 
