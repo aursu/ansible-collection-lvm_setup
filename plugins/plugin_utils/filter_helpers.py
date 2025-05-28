@@ -385,8 +385,7 @@ class Disk(SizeInterface):
         # Supported partition tables: aix, amiga, bsd, dvh, gpt, mac, msdos, pc98, sun, atari, loop
         if table in ["aix", "amiga", "bsd", "dvh", "gpt", "mac", "msdos", "pc98", "sun", "atari", "loop"]:
             self._table = table
-            if self._table:
-                self.table = self._table
+            self.table = table
 
     def set_table(self, table="gpt"):
         if self._table:
