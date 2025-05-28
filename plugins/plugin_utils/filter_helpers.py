@@ -496,9 +496,9 @@ class Disk(SizeInterface):
                     )
 
                 if next_part and (next_part.num == p.num + 1):
-                    part_end = self._to_parted_size(next_begin - 1) # align to 1 MiB before next partition (parted default alignment: 1 MiB / 2048 sectors)
+                    part_end = next_begin - 1 # align to 1 MiB before next partition (parted default alignment: 1 MiB / 2048 sectors)
                 else:
-                    part_end = self._to_parted_size(prev_end + p.size)
+                    part_end = prev_end + p.size
 
                 part_data = {
                     "num": p.num,
@@ -512,7 +512,7 @@ class Disk(SizeInterface):
                 "action": "create",
                 "disk_label": self.table,
                 "part_start": self._to_parted_size(prev_end, 1),
-                "part_end": part_end,
+                "part_end": self._to_parted_size(part_end),
             })                
             result.append(plan)
 
