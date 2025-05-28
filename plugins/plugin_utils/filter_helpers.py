@@ -75,12 +75,12 @@ class SizeInterface(ABC):
                 f"Expected positive '{name}' field in 'MiB'{context}. Got: {raw_value}{self._unit_msg}"
             )
 
-    def _set_unit(self, data):
+    def _set_unit_meta(self, data):
         self._unit = data.get("unit")
         if self._unit:
             self._unit_msg = f" in '{self._unit}'"
 
-    def _set_size(self, data):
+    def _set_size_meta(self, data):
         self._size, self.size = self._convert_size(data, "size")
 
     def validate_size(self, required=True, context=""):
@@ -114,11 +114,11 @@ class Partition(SizeInterface):
         self.begin: Optional[float] = None
         self.end: Optional[float] = None
 
-        self._set_num(part_data)
-        self._set_unit(part_data)
-        self._set_size(part_data)
-        self._set_begin(part_data)
-        self._set_end(part_data)
+        self._set_num_meta(part_data)
+        self._set_unit_meta(part_data)
+        self._set_size_meta(part_data)
+        self._set_begin_meta(part_data)
+        self._set_end_meta(part_data)
 
         self.set_index(idx)
         self.set_disk(disk)
@@ -142,7 +142,7 @@ class Partition(SizeInterface):
         part.validate_size()
         self.state = part
 
-    def _set_num(self, part_data):
+    def _set_num_meta(self, part_data):
         self._num = part_data.get("num")
         try:
             self.num = int(self._num)
@@ -150,10 +150,10 @@ class Partition(SizeInterface):
             self.num = None
             self._num_msg = str(e)
 
-    def _set_begin(self, part_data):
+    def _set_begin_meta(self, part_data):
         self._begin, self.begin = self._convert_size(part_data, "begin")
 
-    def _set_end(self, part_data):
+    def _set_end_meta(self, part_data):
         self._end, self.end = self._convert_size(part_data, "end")
     
     def set_index(self, idx=None):
@@ -309,9 +309,9 @@ class Disk(SizeInterface):
             self.validate(allow_gaps, allow_empty)
 
     def from_metadata(self, disk_data):
-        self._set_unit(disk_data)
-        self._set_size(disk_data)
-        self._set_table(disk_data)
+        self._set_unit_meta(disk_data)
+        self._set_size_meta(disk_data)
+        self._set_table_meta(disk_data)
 
         self.raw_disk = disk_data
 
@@ -328,16 +328,27 @@ class Disk(SizeInterface):
 
         return disk_obj
 
+    @classmethod
+    def from_disk(cls, disk: "Disk"):
+        # extract disk and parts from parted_info
+        disk_obj = cls(disk.disk, disk.raw_parts, allow_gaps=True, allow_empty=True)
+
+        raw_disk = disk.raw_disk if disk.raw_disk else {
+            "unit": disk._unit,
+            "size": disk._size,
+            "table": disk._table
+        }
+        disk_obj.from_metadata(raw_disk)
+
+        return disk_obj
+
     def set_state_disk(self, state: "Disk"):
-        self.state = state
+        self.state = Disk.from_disk(state)
+
         for p in self._parts:
             p.set_state(self.state.parts_by_num(p.num))
-        # set table to its actual value
-        self.set_table(self.state.table)
 
-    def set_state(self, parted_info: dict):
-        state = Disk.from_parted(parted_info)
-        self.set_state_disk(state)
+        self.set_table(self.state.table)
 
     def parts_by_num(self, num=None):
         """
@@ -368,18 +379,22 @@ class Disk(SizeInterface):
         """
         return sorted(self._parts, key=lambda p: p.num)
 
-    def _set_table(self, disk_data):
+    def _set_table_meta(self, disk_data):
+        table = disk_data.get("table")
+        self._set_table(table)
+
+    def _set_table(self, table):
         # Supported partition tables: aix, amiga, bsd, dvh, gpt, mac, msdos, pc98, sun, atari, loop
-        self._table = disk_data.get("table")
-        if self._table:
-            self.table = self._table
+        if table in ["aix", "amiga", "bsd", "dvh", "gpt", "mac", "msdos", "pc98", "sun", "atari", "loop"]:
+            self._table = table
+            if self._table:
+                self.table = self._table
 
     def set_table(self, table="gpt"):
         if self._table:
             # Do not override the partition table if it was already set from parted info
             return
-        if table in ["aix", "amiga", "bsd", "dvh", "gpt", "mac", "msdos", "pc98", "sun", "atari", "loop"]:
-            self.table = table
+        self._set_table(table)
 
     def add_part(self, part: Partition):
         self._parts.append(part)
@@ -457,7 +472,7 @@ class Disk(SizeInterface):
         result = []
 
         # copy state into tmp object
-        state = Disk.from_parted({"disk": self.state.raw_disk, "partitions": self.state.raw_parts})
+        state = Disk.from_disk(self.state)
         state.validate_size()
 
         for p in self._parts:
