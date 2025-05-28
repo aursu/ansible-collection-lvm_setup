@@ -348,8 +348,6 @@ class Disk(SizeInterface):
         for p in self._parts:
             p.set_state(self.state.parts_by_num(p.num))
 
-        self.set_table(self.state.table)
-
     def parts_by_num(self, num=None):
         """
         Return a dictionary mapping partition numbers to Partition objects,
