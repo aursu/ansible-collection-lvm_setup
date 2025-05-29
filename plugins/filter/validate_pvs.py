@@ -1,58 +1,29 @@
+from typing import Any, List
 from ansible.errors import AnsibleFilterError
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.lvm_helpers import PhysicalVolume
 
-def validate_pvs(lvm_info, paths, vg_name):
+
+def validate_pvs(lvm_info: dict[str, Any], paths: list[str], vg_name: str) -> List[dict[str, str]]:
     """
-    Validate PV status of each partition:
-    - If PV exists and is in correct VG → skip
-    - If PV exists but in different VG → raise error
-    - If PV exists and not in any VG → add
-    - If not PV → create
+    Determine the required LVM action for each partition path.
 
-    Returns list of:
-    - path: full partition path
-    - action: 'create', 'add', or 'skip'
-    - warning: optional warning (e.g. already PV but not in VG)
-    - error: always empty (since real errors raise exception)
+    Args:
+        lvm_info: Parsed LVM information with "pv" data.
+        paths: List of full device paths (e.g., "/dev/sda6").
+        vg_name: Target volume group name.
+
+    Returns:
+        List of dictionaries with:
+            - path: the device path
+            - action: one of "create", "add", or "skip"
     """
-    results = []
-
     if not isinstance(paths, list):
         raise AnsibleFilterError("Expected 'paths' to be a list.")
 
-    if not isinstance(lvm_info, dict):
-        raise AnsibleFilterError("Expected 'lvm_info' to be a dictionary.")
-    
-    if not vg_name:
-        raise AnsibleFilterError("Volume group name ('vg_name') must be provided.")
-
-    pvs = lvm_info.get("pvs", [])
-    pv_map = {pv.get("pv_name"): pv for pv in pvs if "pv_name" in pv}
-
-    for path in paths:
-        result = {
-            "path": path,
-            "action": "",
-            "warning": "",
-            "error": ""
-        }
-
-        pv = pv_map.get(path)
-        if pv:
-            pv_vg = pv.get("vg_name")
-            if pv_vg == vg_name:
-                result["action"] = "skip"
-            elif not pv_vg:
-                result["action"] = "add"
-            else:
-                raise AnsibleFilterError(
-                    f"Persistent volume {path} is already part of another volume group: {pv_vg}"
-                )
-        else:
-            result["action"] = "create"
-
-        results.append(result)
-
-    return results
+    return [
+        PhysicalVolume.from_lvm_info(path, lvm_info).plan(vg_name)
+        for path in paths
+    ]
 
 class FilterModule(object):
     def filters(self):

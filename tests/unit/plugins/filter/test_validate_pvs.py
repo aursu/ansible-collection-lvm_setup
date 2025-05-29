@@ -7,7 +7,7 @@ def test_create_when_not_a_pv():
     paths = ["/dev/sda5"]
     result = validate_pvs(lvm_info, paths, "vg_main")
     assert result == [
-        {"path": "/dev/sda5", "action": "create", "warning": "", "error": ""}
+        {"path": "/dev/sda5", "action": "create"}
     ]
 
 def test_skip_when_pv_in_correct_vg():
@@ -19,7 +19,7 @@ def test_skip_when_pv_in_correct_vg():
     paths = ["/dev/sda5"]
     result = validate_pvs(lvm_info, paths, "vg_main")
     assert result == [
-        {"path": "/dev/sda5", "action": "skip", "warning": "", "error": ""}
+        {"path": "/dev/sda5", "action": "skip"}
     ]
 
 def test_add_when_pv_without_vg():
@@ -31,7 +31,7 @@ def test_add_when_pv_without_vg():
     paths = ["/dev/sda5"]
     result = validate_pvs(lvm_info, paths, "vg_main")
     assert result == [
-        {"path": "/dev/sda5", "action": "add", "warning": "", "error": ""}
+        {"path": "/dev/sda5", "action": "add"}
     ]
 
 def test_add_when_pv_with_none_vg():
@@ -43,7 +43,7 @@ def test_add_when_pv_with_none_vg():
     paths = ["/dev/sda5"]
     result = validate_pvs(lvm_info, paths, "vg_main")
     assert result == [
-        {"path": "/dev/sda5", "action": "add", "warning": "", "error": ""}
+        {"path": "/dev/sda5", "action": "add"}
     ]
 
 def test_fail_when_pv_in_another_vg():
