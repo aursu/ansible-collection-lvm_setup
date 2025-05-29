@@ -154,6 +154,10 @@ class PhysicalVolume:
 
         return obj
 
+    @property
+    def path(self) -> str:
+        return self._path
+
     def validate_group(self, vg_name: str) -> bool:
         """
         Validate whether the PV is suitable for use in the given VG.
@@ -202,3 +206,74 @@ class PhysicalVolume:
             "path": self._path,
             "action": action
         }
+
+class VolumeGroup:
+    def __init__(self, vg_name: str):
+        """
+        Initialize a VolumeGroup object with a given name.
+
+        Args:
+            vg_name (str): Name of the volume group.
+
+        Raises:
+            AnsibleFilterError: If vg_name is not a string or is empty.
+        """
+        if not isinstance(vg_name, str) or not vg_name.strip():
+            raise AnsibleFilterError(f"Expected 'vg_name' to be a non-empty string, got: {vg_name!r}")
+
+        self._name: str = vg_name
+        self._exists: bool = False
+
+        self._pvs: list[PhysicalVolume] = [] # Internal: ordered PVs attached to this VG
+
+        self.raw_info: dict[str, str] = {}
+
+    def from_metadata(self, lvm_info: dict[str, Any]):
+        """
+        Populate VG metadata from lvm_info if this VG is present.
+
+        Args:
+            lvm_info: Dictionary containing "vg" key with VG details.
+        """
+        if not isinstance(lvm_info, dict):
+            raise AnsibleFilterError(
+                f"Expected LVM information 'lvm_info' to be a dictionary for {self._name!r}, "
+                f"got {type(lvm_info).__name__}"
+            )
+
+        # Find VG entry
+        for vg in lvm_info.get("vg", []):
+            if vg.get("vg_name") == self._name:
+                self._exists = True
+                self.raw_info = vg
+                break
+
+        # Collect PVs belonging to this VG
+        self._pvs = []
+        for pv in lvm_info.get("pv", []):
+            if pv.get("vg_name") == self._name and "pv_name" in pv:
+                self._pvs.append(PhysicalVolume.from_lvm_info(pv["pv_name"], lvm_info))
+
+    @property
+    def pvs(self) -> dict[str, PhysicalVolume]:
+        """
+        Return a dictionary mapping PV paths to PhysicalVolume objects.
+
+        Returns:
+            dict[str, PhysicalVolume]: path → PV object
+        """
+        return {pv.path: pv for pv in self._pvs}
+
+    def validate(self):
+        if not self._exists:
+            raise AnsibleFilterError(f"Volume group '{self._name}' not found in system.")
+
+    def plan_pvs(self, lvm_info: dict[str, Any], paths: list[str]):
+        if not isinstance(paths, list):
+            raise AnsibleFilterError("Expected 'paths' to be a list.")
+
+        return [
+            PhysicalVolume.from_lvm_info(path, lvm_info).plan(self._name)
+            for path in paths
+            if path not in self.pvs
+        ]
