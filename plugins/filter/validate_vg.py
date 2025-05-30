@@ -1,4 +1,3 @@
-from ansible.errors import AnsibleFilterError
 from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.lvm_helpers import VolumeGroup
 
 def validate_vg(vg_name, lvm_info):

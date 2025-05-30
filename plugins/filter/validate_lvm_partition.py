@@ -12,8 +12,7 @@ def validate_lvm_partition(path, info):
     - Have blkid section
     - blkid.type must be absent or 'LVM2_member'
     """
-    dev = Device.from_dev_info(path, info)
-    return dev.validate_lvm()
+    return Device.from_dev_info(path, info).validate_lvm()
 
 class FilterModule(object):
     def filters(self):

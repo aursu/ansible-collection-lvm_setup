@@ -125,7 +125,8 @@ class PhysicalVolume:
 
         # No device info available at instantiation
         self.raw_info: dict[str, str] = {}
-    
+        self._lvm_info: Optional[dict[str, Any]] = None
+
     def from_metadata(self, lvm_info: dict[str, list[dict[str, str]]]) -> None:
         """
         Populate PV information from lvm_info, if available.
@@ -143,6 +144,7 @@ class PhysicalVolume:
                 self._pv_free = pv.get("pv_free")
                 self.raw_info = pv
                 break
+        self._lvm_info = lvm_info
 
     @classmethod
     def from_lvm_info(cls, path: str, lvm_info: dict[str, Any]) -> "PhysicalVolume":
