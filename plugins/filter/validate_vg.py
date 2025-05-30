@@ -1,4 +1,5 @@
 from ansible.errors import AnsibleFilterError
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.lvm_helpers import VolumeGroup
 
 def validate_vg(vg_name, lvm_info):
     """
@@ -14,17 +15,7 @@ def validate_vg(vg_name, lvm_info):
     Returns:
         True if VG exists.
     """
-    if not isinstance(vg_name, str):
-        raise AnsibleFilterError("Expected 'vg_name' to be a string.")
-
-    if not isinstance(lvm_info, dict):
-        raise AnsibleFilterError("Expected 'lvm_info' to be a dictionary.")
-
-    vg_list = [vg.get("vg_name") for vg in lvm_info.get("vg", [])]
-    if vg_name not in vg_list:
-        raise AnsibleFilterError(f"Volume group '{vg_name}' not found in system.")
-
-    return True
+    return VolumeGroup.from_lvm_info(vg_name, lvm_info).validate()
 
 class FilterModule(object):
     def filters(self):

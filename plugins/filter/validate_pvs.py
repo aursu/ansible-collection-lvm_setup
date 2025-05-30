@@ -1,7 +1,5 @@
 from typing import Any, List
-from ansible.errors import AnsibleFilterError
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.lvm_helpers import PhysicalVolume
-
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.lvm_helpers import VolumeGroup
 
 def validate_pvs(lvm_info: dict[str, Any], paths: list[str], vg_name: str) -> List[dict[str, str]]:
     """
@@ -17,13 +15,7 @@ def validate_pvs(lvm_info: dict[str, Any], paths: list[str], vg_name: str) -> Li
             - path: the device path
             - action: one of "create", "add", or "skip"
     """
-    if not isinstance(paths, list):
-        raise AnsibleFilterError("Expected 'paths' to be a list.")
-
-    return [
-        PhysicalVolume.from_lvm_info(path, lvm_info).plan(vg_name)
-        for path in paths
-    ]
+    return VolumeGroup.from_lvm_info(vg_name, lvm_info).plan_pvs(paths)
 
 class FilterModule(object):
     def filters(self):
