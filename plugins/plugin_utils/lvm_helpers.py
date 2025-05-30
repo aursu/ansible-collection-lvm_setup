@@ -209,6 +209,146 @@ class PhysicalVolume:
             "action": action
         }
 
+# volumes:
+#   - name: data1
+#     vg: data
+#     size: 200g
+#     filesystem: xfs
+#     mountpoint: /mnt/disks/data1
+#   - name: data2
+#     vg: data
+#     size: 200g
+#     filesystem: xfs
+#     mountpoint: /mnt/disks/data2
+class VirtualVolume:
+    SUPPORTED_FS = {"ext4", "xfs", "btrfs"}
+
+    def __init__(self, lv_data, idx=None):
+        self._msg_in: Optional[str] = ""
+        self._msg_for: Optional[str] = ""
+        self.set_index(idx)
+
+        self._name: Optional[str] = None
+        self._vg: Optional[str] = None
+        self._size: Optional[str] = None
+        self._fs: Optional[str] = None
+        self._mount: Optional[str] = None
+
+        self.raw_data: dict[str, str] = {}
+
+        self.from_metadata(lv_data)
+
+    def set_index(self, idx=None):
+        if not isinstance(idx, int):
+            return
+        self._msg_in = f" in logical volume #{idx+1}"
+        self._msg_for = f" for logical volume #{idx+1}"
+
+    def _get_field_meta(self, lv_data, name, alt_name=None):
+        raw_field = None
+        if name in lv_data:
+            raw_field = lv_data.get(name)
+        elif alt_name and alt_name in lv_data:
+            raw_field = lv_data.get(alt_name)
+        return raw_field
+    
+    def _get_property(self, raw_field):
+        if isinstance(raw_field, str) and raw_field:
+            return raw_field
+        return None
+    
+    def _validate_field(self, raw_field, field, name, alt_name=None):
+        alt_msg_and = f" (and '{alt_name}')" if alt_name else ""
+        alt_msg_or = f" (or '{alt_name}')" if alt_name else ""
+        if raw_field is None:
+            raise AnsibleFilterError(f"Missing '{name}'{alt_msg_and} field{self._msg_in}.")
+        if field is None:
+            raise AnsibleFilterError(f"'{name}'{alt_msg_or} must be non empty string{self._msg_in}. Got: {raw_field}")
+        return True
+
+    def _set_name_meta(self, lv_data):
+        self._name = self._get_field_meta(lv_data, "name", "lv_name")
+
+    @property
+    def name(self) -> Optional[str]:
+        return self._get_property(self._name)
+
+    def validate_name(self):
+        return self._validate_field(self._name, self.name, "name", "lv_name")
+    
+    def _set_group_meta(self, lv_data):
+        self._vg = self._get_field_meta(lv_data, "vg", "vg_name")
+
+    @property
+    def vg(self) -> Optional[str]:
+        return self._get_property(self._vg)
+
+    def validate_group(self):
+        return self._validate_field(self._vg, self.vg, "vg", "vg_name")
+
+    def _set_size_meta(self, lv_data):
+        self._size = self._get_field_meta(lv_data, "size", "lv_size")
+
+    @property
+    def size(self) -> Optional[str]:
+        return self._get_property(self._size)
+
+    def validate_size(self):
+        return self._validate_field(self._size, self.size, "size", "lv_size")
+
+    def _set_filesystem_meta(self, lv_data):
+        self._fs = self._get_field_meta(lv_data, "filesystem")
+
+    @property
+    def fs(self) -> Optional[str]:
+        return self._get_property(self._fs)
+
+    def validate_filesystem(self):
+        fs = self.fs
+        if fs and self._validate_field(self._fs, fs, "filesystem") and fs not in self.SUPPORTED_FS:
+            raise AnsibleFilterError(
+                f"Unsupported filesystem '{fs}' in volume '{self.name}'. Supported: {', '.join(sorted(self.SUPPORTED_FS))}."
+            )
+        return True
+
+    def _set_mountpoint_meta(self, lv_data):
+        self._mount = self._get_field_meta(lv_data, "mountpoint")
+
+    @property
+    def mount(self) -> Optional[str]:
+        return self._get_property(self._mount)
+
+    def validate_mountpoint(self):
+        mount = self.mount
+        if mount and self._validate_field(self._mount, mount, "mountpoint") and not os.path.isabs(mount):
+            raise AnsibleFilterError(f"Volume '{self.name}': 'mountpoint' must be an absolute path.")
+        return True
+
+    def from_metadata(self, lv_data: dict[str, str]) -> None:
+        if not isinstance(lv_data, dict):
+            raise AnsibleFilterError(f"Volume entry must be a dictionary{self._msg_for}. Found: {lv_data}")
+
+        self._set_name_meta(lv_data)
+        self._set_group_meta(lv_data)
+        self._set_size_meta(lv_data)
+        self._set_filesystem_meta(lv_data)
+        self._set_mountpoint_meta(lv_data)
+
+        self.validate_name()
+        self.validate_group()
+        self.validate_size()
+
+        self.raw_data = lv_data
+
+    def validate(self):
+        self.validate_name()
+        self.validate_group()
+        self.validate_size()
+        self.validate_filesystem()
+        self.validate_mountpoint()
+
+        return True
+
 class VolumeGroup:
     def __init__(self, vg_name: str):
         """
