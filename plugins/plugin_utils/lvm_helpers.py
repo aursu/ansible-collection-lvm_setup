@@ -287,5 +287,5 @@ class VolumeGroup:
         return [
             PhysicalVolume.from_lvm_info(path, self._lvm_info).plan(self._name)
             for path in paths
-            if path not in self.pvs
+            # if path not in self.pvs # to avoid 'skip' records
         ]

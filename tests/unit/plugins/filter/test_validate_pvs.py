@@ -59,7 +59,7 @@ def test_fail_when_pv_in_another_vg():
 def test_fail_on_missing_vg_name():
     lvm_info = {"pv": []}
     paths = ["/dev/sda5"]
-    with pytest.raises(AnsibleFilterError, match="must be provided"):
+    with pytest.raises(AnsibleFilterError, match="to be a non-empty string"):
         validate_pvs(lvm_info, paths, "")
 
 def test_fail_on_invalid_paths_type():
@@ -68,5 +68,5 @@ def test_fail_on_invalid_paths_type():
         validate_pvs(lvm_info, "/dev/sda5", "vg_main")
 
 def test_fail_on_invalid_lvm_info_type():
-    with pytest.raises(AnsibleFilterError, match="Expected 'lvm_info' to be a dictionary."):
+    with pytest.raises(AnsibleFilterError, match="Expected LVM information 'lvm_info' to be a dictionary"):
         validate_pvs("invalid", ["/dev/sda5"], "vg_main")
