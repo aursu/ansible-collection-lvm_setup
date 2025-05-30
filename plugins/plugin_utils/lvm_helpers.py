@@ -227,6 +227,7 @@ class VolumeGroup:
         self._pvs: list[PhysicalVolume] = [] # Internal: ordered PVs attached to this VG
 
         self.raw_info: dict[str, str] = {}
+        self._lvm_info: Optional[dict[str, Any]] = None
 
     def from_metadata(self, lvm_info: dict[str, Any]):
         """
@@ -254,6 +255,14 @@ class VolumeGroup:
             if pv.get("vg_name") == self._name and "pv_name" in pv:
                 self._pvs.append(PhysicalVolume.from_lvm_info(pv["pv_name"], lvm_info))
 
+        self._lvm_info = lvm_info
+
+    @classmethod
+    def from_lvm_info(cls, vg_name: str, lvm_info: dict[str, Any]) -> "VolumeGroup":
+        vg = cls(vg_name)
+        vg.from_metadata(lvm_info)
+        return vg
+
     @property
     def pvs(self) -> dict[str, PhysicalVolume]:
         """
@@ -267,13 +276,14 @@ class VolumeGroup:
     def validate(self):
         if not self._exists:
             raise AnsibleFilterError(f"Volume group '{self._name}' not found in system.")
+        return True
 
-    def plan_pvs(self, lvm_info: dict[str, Any], paths: list[str]):
+    def plan_pvs(self, paths: list[str]):
         if not isinstance(paths, list):
             raise AnsibleFilterError("Expected 'paths' to be a list.")
 
         return [
-            PhysicalVolume.from_lvm_info(path, lvm_info).plan(self._name)
+            PhysicalVolume.from_lvm_info(path, self._lvm_info).plan(self._name)
             for path in paths
             if path not in self.pvs
         ]
