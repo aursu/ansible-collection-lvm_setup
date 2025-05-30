@@ -3,7 +3,7 @@ from ansible.errors import AnsibleFilterError
 from ansible_collections.aursu.lvm_setup.plugins.filter.validate_pvs import validate_pvs
 
 def test_create_when_not_a_pv():
-    lvm_info = {"pvs": []}
+    lvm_info = {"pv": []}
     paths = ["/dev/sda5"]
     result = validate_pvs(lvm_info, paths, "vg_main")
     assert result == [
@@ -12,7 +12,7 @@ def test_create_when_not_a_pv():
 
 def test_skip_when_pv_in_correct_vg():
     lvm_info = {
-        "pvs": [
+        "pv": [
             {"pv_name": "/dev/sda5", "vg_name": "vg_main"}
         ]
     }
@@ -24,7 +24,7 @@ def test_skip_when_pv_in_correct_vg():
 
 def test_add_when_pv_without_vg():
     lvm_info = {
-        "pvs": [
+        "pv": [
             {"pv_name": "/dev/sda5", "vg_name": ""}
         ]
     }
@@ -36,7 +36,7 @@ def test_add_when_pv_without_vg():
 
 def test_add_when_pv_with_none_vg():
     lvm_info = {
-        "pvs": [
+        "pv": [
             {"pv_name": "/dev/sda5", "vg_name": None}
         ]
     }
@@ -48,7 +48,7 @@ def test_add_when_pv_with_none_vg():
 
 def test_fail_when_pv_in_another_vg():
     lvm_info = {
-        "pvs": [
+        "pv": [
             {"pv_name": "/dev/sda5", "vg_name": "other_vg"}
         ]
     }
@@ -57,13 +57,13 @@ def test_fail_when_pv_in_another_vg():
         validate_pvs(lvm_info, paths, "vg_main")
 
 def test_fail_on_missing_vg_name():
-    lvm_info = {"pvs": []}
+    lvm_info = {"pv": []}
     paths = ["/dev/sda5"]
     with pytest.raises(AnsibleFilterError, match="must be provided"):
         validate_pvs(lvm_info, paths, "")
 
 def test_fail_on_invalid_paths_type():
-    lvm_info = {"pvs": []}
+    lvm_info = {"pv": []}
     with pytest.raises(AnsibleFilterError, match="Expected 'paths' to be a list."):
         validate_pvs(lvm_info, "/dev/sda5", "vg_main")
 
