@@ -24,6 +24,7 @@ class Device:
         self._stat_error: Optional[str] = None
         self._filetype: Optional[str] = None
         self._fs_type: Optional[str] = None
+        self._mount: list[dict[str, str]] = []
 
         # No device info available at instantiation
         self.raw_info: dict[str, Any] = {}
@@ -65,14 +66,53 @@ class Device:
     def _set_filesystem_type(self, dev_info: dict[str, Any]) -> None:
         self._fs_type= dev_info.get('blkid', {}).get('type')
 
+    # "dev_info": {
+    #     "blkid": {
+    #         "block_size": "4096",
+    #         "dev_name": "/dev/data/data1",
+    #         "type": "xfs",
+    #         "uuid": "702cae58-2e80-4d11-a6cc-cbaa6ffdc628"
+    #     },
+    #     "changed": false,
+    #     "failed": false,
+    #     "filetype": "b",
+    #     "is_exists": true,
+    #     "mount": [
+    #         {
+    #             "fstype": "xfs",
+    #             "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota",
+    #             "source": "/dev/mapper/data-data1",
+    #             "target": "/mnt/disks/data1"
+    #         }
+    #     ],
+    #     "stat": {
+    #         "atime": 1748412163.7319455,
+    #         "ctime": 1747927686.712973,
+    #         "dev": 5,
+    #         "gid": 6,
+    #         "ino": 1421,
+    #         "mode": 25008,
+    #         "mtime": 1747927686.712973,
+    #         "nlink": 1,
+    #         "rdev": 64512,
+    #         "size": 0,
+    #         "uid": 0
+    #     }
+    # }
+
+    def _set_mount_points(self, dev_info: dict[str, Any]) -> None:
+        self._mount = dev_info.get('mount', [])
+
     def from_metadata(self, dev_info: dict[str, Any]) -> None:
         self._set_existence_flag(dev_info)
         self._set_stat_error(dev_info)
         self._set_filetype(dev_info)
         self._set_filesystem_type(dev_info)
+        self._set_mount_points(dev_info)
 
         self.raw_info = dev_info
 
+    @property
     def is_exists(self) -> bool:
         return self._is_exists
     
@@ -108,6 +148,14 @@ class Device:
             raise AnsibleFilterError(f"Partition {self._path} contains unexpected filesystem: {self._fs_type}")
 
         return True
+
+    def validate_mount(self, mountpoint: str):
+        if self.is_exists() and mountpoint:
+            for mount in self._mount:
+                target = mount.get("target")
+                if target and target == mountpoint:
+                    return True
+        return False
 
 class PhysicalVolume:
     def __init__(self, path: str):
@@ -220,10 +268,11 @@ class PhysicalVolume:
 #     size: 200g
 #     filesystem: xfs
 #     mountpoint: /mnt/disks/data2
-class VirtualVolume:
+class LogicalVolume:
     SUPPORTED_FS = {"ext4", "xfs", "btrfs"}
 
     def __init__(self, lv_data, idx=None):
+        self._index: Optional[int] = None
         self._msg_in: Optional[str] = ""
         self._msg_for: Optional[str] = ""
         self.set_index(idx)
@@ -235,14 +284,20 @@ class VirtualVolume:
         self._mount: Optional[str] = None
 
         self.raw_data: dict[str, str] = {}
+        self._lvm_info: Optional[dict[str, Any]] = None
 
         self.from_metadata(lv_data)
 
     def set_index(self, idx=None):
         if not isinstance(idx, int):
             return
+        self._index = idx
         self._msg_in = f" in logical volume #{idx+1}"
         self._msg_for = f" for logical volume #{idx+1}"
+
+    @property
+    def index(self) -> Optional[int]:
+        return self._index
 
     def _get_field_meta(self, lv_data, name, alt_name=None):
         raw_field = None
@@ -349,8 +404,30 @@ class VirtualVolume:
 
         return True
 
+    @classmethod
+    def from_lvm_info(cls, name: str, lvm_info: dict[str, Any]) -> Optional["LogicalVolume"]:
+        for idx, lv_data in enumerate(lvm_info.get("lv", [])):
+            if lv_data.get("lv_name") == name:
+                lv = cls(lv_data, idx)
+                lv._lvm_info = lvm_info
+                return lv
+        return None
+
+    @classmethod
+    def from_volume(cls, volume: "LogicalVolume") -> "LogicalVolume":
+        lv = cls(volume.raw_data, volume.index)
+        lv._lvm_info = volume._lvm_info
+
+        return lv
+    
+    def set_state(self, volume: Optional["LogicalVolume"] = None):
+        if volume is None:
+            return
+        if self.name == volume.name:
+            self.state = LogicalVolume.from_volume(volume)
+
 class VolumeGroup:
-    def __init__(self, vg_name: str):
+    def __init__(self, vg_name: str, volumes = []):
         """
         Initialize a VolumeGroup object with a given name.
 
@@ -367,9 +444,31 @@ class VolumeGroup:
         self._exists: bool = False
 
         self._pvs: list[PhysicalVolume] = [] # Internal: ordered PVs attached to this VG
+        self._volumes = list[LogicalVolume] = []
+
+        self._tracked_names = set()
+        self._duplicate: Optional[str] = None
+
+        for idx, lv_data in enumerate(volumes):
+            lv = LogicalVolume(lv_data, idx)
+            self.add_volume(lv)
 
         self.raw_info: dict[str, str] = {}
         self._lvm_info: Optional[dict[str, Any]] = None
+
+        # Actual volume group state
+        self.state: Optional["VolumeGroup"] = None
+
+    def add_volume(self, volume: LogicalVolume):
+        volume.validate_filesystem()
+        volume.validate_mountpoint()
+
+        self._volumes.append(volume)
+
+        if volume.name in self._tracked_names:
+            self._duplicate = volume.name
+        else:
+            self._tracked_names.add(volume.name)
 
     def from_metadata(self, lvm_info: dict[str, Any]):
         """
@@ -397,6 +496,11 @@ class VolumeGroup:
             if pv.get("vg_name") == self._name and "pv_name" in pv:
                 self._pvs.append(PhysicalVolume.from_lvm_info(pv["pv_name"], lvm_info))
 
+        self._volumes = []
+        for lv in lvm_info.get("lv", []):
+            if lv.get("vg_name") == self._name and "lv_name" in lv:
+                self._volumes.append(LogicalVolume.from_lvm_info(lv["lv_name"], lvm_info))
+
         self._lvm_info = lvm_info
 
     @classmethod
@@ -404,6 +508,14 @@ class VolumeGroup:
         vg = cls(vg_name)
         vg.from_metadata(lvm_info)
         return vg
+
+    @property
+    def duplicate(self) -> Optional[str]:
+        return self._duplicate
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def pvs(self) -> dict[str, PhysicalVolume]:
@@ -429,3 +541,25 @@ class VolumeGroup:
             for path in paths
             # if path not in self.pvs # to avoid 'skip' records
         ]
+
+class VolumeInput:
+    def __init__(self, volumes: list[dict]):
+        if not isinstance(volumes, list):
+            raise AnsibleFilterError("Expected 'volumes' to be a list.")
+
+        self._volumes = [LogicalVolume(volume, idx) for idx, volume in enumerate(volumes)]
+        self._vg_names = {vol.vg for vol in self._volumes}
+
+        if len(self._vg_names) > 1:
+            raise AnsibleFilterError(
+                f"Expected 'volumes' to be a set of volumes within single group. Got: {self._vg_names}."
+            )
+        self.vg_name = next(iter(self._vg_names))
+
+    def validate(self):
+        vg = VolumeGroup(self.vg_name)
+        for lv in self._volumes:
+            vg.add_volume(lv)
+            if vg.duplicate:
+                raise AnsibleFilterError(f"Duplicate LV name detected: '{vg.duplicate}'")
+        return True
