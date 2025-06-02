@@ -1,6 +1,7 @@
 import os
 from ansible.errors import AnsibleFilterError
 from ansible_collections.aursu.lvm_setup.plugins.module_utils.size_utils import to_mib
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.lvm_helpers import VolumeInput
 
 def validate_lv(lv, idx=0):
     if not isinstance(lv, dict):
@@ -36,46 +37,6 @@ def validate_lv(lv, idx=0):
             raise AnsibleFilterError(f"Volume '{name}': 'mountpoint' must be an absolute path.")
 
     return True
-
-def validate_volumes_input(volumes):
-    """
-    Validates the structure of the `volumes` variable.
-    Each volume must be a dictionary with required keys: name, vg, and size.
-    Optional: filesystem, mountpoint.
-    """
-    if not isinstance(volumes, list):
-        raise AnsibleFilterError("Expected 'volumes' to be a list.")
-    
-    tracked_names = set()
-
-    for idx, volume in enumerate(volumes):
-        validate_lv(volume, idx)
-
-        name = volume.get("name")
-
-        if name in tracked_names:
-            raise AnsibleFilterError(f"Duplicate LV name detected: '{name}'")
-
-        tracked_names.add(name)
-
-    return True
-
-def validate_mount(lv, dev_info):
-    validate_lv(lv)
-
-    if not isinstance(dev_info, dict):
-        raise AnsibleFilterError("Expected 'dev_info' to be a dictionary.")
-
-    mountpoint = lv.get("mountpoint")
-
-    if dev_info.get("is_exists") and mountpoint:
-        for mount in dev_info.get("mount", []):
-            target = mount.get("target")
-            if target and target == mountpoint:
-                # mounted properly
-                return True
-
-    return False
 
 # +---------------------------------------+--------------------------------------------------------+
 # | Empty dev_info & lvm_info             | Formatted dev_info & lvm_info                          |
@@ -207,7 +168,5 @@ def validate_volume(lv, lvm_info, dev_info):
 class FilterModule(object):
     def filters(self):
         return {
-            'validate_volumes_input': validate_volumes_input,
             'validate_volume': validate_volume,
-            'validate_mount': validate_mount
         }
