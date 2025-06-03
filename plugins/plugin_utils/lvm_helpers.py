@@ -554,6 +554,16 @@ class VolumeGroup:
 
         self._lvm_info = lvm_info
 
+    def set_state(self, lvm_info: dict[str, Any]):
+        group = VolumeGroup.from_lvm_info(self.name, lvm_info)
+        self.state = group
+        for lv in self._volumes:
+            if lv.name in self.state.lvs:
+                lv.set_state(self.state.lvs[lv.name])
+
+    def has_state(self) -> bool:
+        return self.state is not None
+
     @property
     def name(self) -> str:
         return self._name
@@ -582,21 +592,17 @@ class VolumeGroup:
             return self.state.vg_free
         return to_mib(self._vg_free) if self._vg_free else 0
 
-    def set_state(self, lvm_info: dict[str, Any]):
-        group = VolumeGroup.from_lvm_info(self.name, lvm_info)
-        self.state = group
-        for lv in self._volumes:
-            if lv.name in self.state.lvs:
-                lv.set_state(self.state.lvs[lv.name])
-
-    def has_state(self) -> bool:
-        return self.state is not None
-
     @property
     def is_exists(self) -> bool:
         if self.has_state():
             return self.state.is_exists
         return self._is_exists
+    
+    @property
+    def lvm_info(self) -> dict[str, Any]:
+        if self.has_state():
+            return self.state.lvm_info
+        return self._lvm_info
 
     @classmethod
     def from_lvm_info(cls, vg_name: str, lvm_info: dict[str, Any]) -> "VolumeGroup":
@@ -613,10 +619,8 @@ class VolumeGroup:
         if not isinstance(paths, list):
             raise AnsibleFilterError("Expected 'paths' to be a list.")
 
-        lvm_info = self.state._lvm_info if self.has_state() else self._lvm_info
-
         return [
-            PhysicalVolume.from_lvm_info(path, lvm_info).plan(self.name)
+            PhysicalVolume.from_lvm_info(path, self.lvm_info).plan(self.name)
             for path in paths
         ]
 
