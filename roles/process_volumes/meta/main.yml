@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: Alexander Ursu
+  description: >
+    Ansible role to create logical volumes (LVs) inside a volume group (VG), format filesystems,
+    and validate existing mounts.
+  license: MIT
+  min_ansible_version: 2.14
+  platforms:
+    - name: EL
+      versions: [9]
+    - name: Ubuntu
+      versions: [22.04, 24.04]
+  galaxy_tags:
+    - lvm
+    - volumes
+    - xfs
+    - ext4
+    - linux
+    - mount
+dependencies: []

@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: Alexander Ursu
+  description: >
+    Ansible role to prepare LVM Physical Volumes (PVs) and create a Volume Group (VG).
+    Validates partitions, checks device suitability, and manages VG creation or extension.
+  license: MIT
+  min_ansible_version: 2.14
+  platforms:
+    - name: EL
+      versions: [9]
+    - name: Ubuntu
+      versions: [22.04, 24.04]
+  galaxy_tags:
+    - lvm
+    - volumes
+    - storage
+    - vg
+    - pv
+    - linux
+dependencies: []
