@@ -5,7 +5,7 @@
 - block:
     - name: Validate input and prerequisites
       import_tasks: validate_devs.yml
-      when: validate_partitions | default(true)
+      when: validate_devs | default(true)
 
     - name: Process each disk defined in partitions
       ansible.builtin.include_tasks: validate_partitions.yml

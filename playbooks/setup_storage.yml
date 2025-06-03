@@ -8,10 +8,10 @@
   roles:
     - role: aursu.lvm_setup.process_disks
       vars:
-        validate_partitions: true
+        validate_devs: true
 
     - role: aursu.lvm_setup.process_lvm
       vars:
-        validate_partitions: false
+        validate_devs: false
 
     - aursu.lvm_setup.process_volumes
