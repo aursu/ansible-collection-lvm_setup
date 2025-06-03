@@ -1,5 +1,4 @@
 import pytest
-from ansible.errors import AnsibleFilterError
 from ansible_collections.aursu.lvm_setup.plugins.filter.partition_paths import partition_paths
 
 def test_partition_paths():

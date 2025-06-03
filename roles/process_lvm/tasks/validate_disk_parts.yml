@@ -26,7 +26,7 @@
     label: "Partition {{ part.num }}"
     loop_var: part
   vars:
-    part_path: "{{ disk | aursu.lvm_setup.partition_path(part.num) }}"
+    part_path: "{{ disk | aursu.lvm_setup.partition_path(part) }}"
 
 - name: Set full path for each partition
   ansible.builtin.set_fact:
