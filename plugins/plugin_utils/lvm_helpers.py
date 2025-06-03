@@ -2,6 +2,7 @@ import os.path
 from abc import ABC
 from typing import Any, Optional
 from ansible.errors import AnsibleFilterError
+from ansible_collections.aursu.lvm_setup.plugins.module_utils.size_utils import to_mib
 
 class Device:
     def __init__(self, path):
@@ -64,41 +65,7 @@ class Device:
         self._filetype = dev_info.get('filetype')
     
     def _set_filesystem_type(self, dev_info: dict[str, Any]) -> None:
-        self._fs_type= dev_info.get('blkid', {}).get('type')
-
-    # "dev_info": {
-    #     "blkid": {
-    #         "block_size": "4096",
-    #         "dev_name": "/dev/data/data1",
-    #         "type": "xfs",
-    #         "uuid": "702cae58-2e80-4d11-a6cc-cbaa6ffdc628"
-    #     },
-    #     "changed": false,
-    #     "failed": false,
-    #     "filetype": "b",
-    #     "is_exists": true,
-    #     "mount": [
-    #         {
-    #             "fstype": "xfs",
-    #             "options": "rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota",
-    #             "source": "/dev/mapper/data-data1",
-    #             "target": "/mnt/disks/data1"
-    #         }
-    #     ],
-    #     "stat": {
-    #         "atime": 1748412163.7319455,
-    #         "ctime": 1747927686.712973,
-    #         "dev": 5,
-    #         "gid": 6,
-    #         "ino": 1421,
-    #         "mode": 25008,
-    #         "mtime": 1747927686.712973,
-    #         "nlink": 1,
-    #         "rdev": 64512,
-    #         "size": 0,
-    #         "uid": 0
-    #     }
-    # }
+        self._fs_type = dev_info.get('blkid', {}).get('type')
 
     def _set_mount_points(self, dev_info: dict[str, Any]) -> None:
         self._mount = dev_info.get('mount', [])
@@ -116,6 +83,14 @@ class Device:
     def is_exists(self) -> bool:
         return self._is_exists
     
+    @property
+    def path(self) -> str:
+        return self._path
+    
+    @property
+    def fs_type(self) -> str:
+        return self._fs_type
+    
     def is_stat_error(self) -> bool:
         return bool(self._stat_error)
     
@@ -123,10 +98,10 @@ class Device:
         return self._filetype == "b"
     
     def has_filesystem(self) -> bool:
-        return bool(self._fs_type)
+        return bool(self.fs_type)
 
     def is_lvm2_member(self) -> bool:
-        return self._fs_type == "LVM2_member"
+        return self.fs_type == "LVM2_member"
     
     def validate_lvm(self) -> bool:
         """
@@ -135,22 +110,22 @@ class Device:
         Raises:
             AnsibleFilterError: If the device is invalid for LVM use.
         """
-        if not self.is_exists():
-            raise AnsibleFilterError(f"Partition {self._path} does not exist.")
+        if not self.is_exists:
+            raise AnsibleFilterError(f"Partition {self.path} does not exist.")
         
         if self.is_stat_error():
-            raise AnsibleFilterError(f"Partition file {self._path} stat error: {self._stat_error}")
+            raise AnsibleFilterError(f"Partition file {self.path} stat error: {self._stat_error}")
         
         if not self.is_block_device():
-            raise AnsibleFilterError(f"Partition {self._path} is not a block device (actual filetype is {self._filetype}).")
+            raise AnsibleFilterError(f"Partition {self.path} is not a block device (actual filetype is {self._filetype}).")
         
         if self.has_filesystem() and not self.is_lvm2_member():
-            raise AnsibleFilterError(f"Partition {self._path} contains unexpected filesystem: {self._fs_type}")
+            raise AnsibleFilterError(f"Partition {self.path} contains unexpected filesystem: {self.fs_type}")
 
         return True
 
     def validate_mount(self, mountpoint: str):
-        if self.is_exists() and mountpoint:
+        if self.is_exists and mountpoint:
             for mount in self._mount:
                 target = mount.get("target")
                 if target and target == mountpoint:
@@ -197,7 +172,10 @@ class PhysicalVolume:
     @classmethod
     def from_lvm_info(cls, path: str, lvm_info: dict[str, Any]) -> "PhysicalVolume":
         if not isinstance(lvm_info, dict):
-            raise AnsibleFilterError(f"Expected LVM information 'lvm_info' to be a dictionary for {path}, got {type(lvm_info).__name__}")
+            raise AnsibleFilterError(
+                f"Expected LVM information 'lvm_info' to be a dictionary for {path}, "
+                f"got {type(lvm_info).__name__}"
+            )
 
         obj = cls(path)
         obj.from_metadata(lvm_info)
@@ -257,17 +235,6 @@ class PhysicalVolume:
             "action": action
         }
 
-# volumes:
-#   - name: data1
-#     vg: data
-#     size: 200g
-#     filesystem: xfs
-#     mountpoint: /mnt/disks/data1
-#   - name: data2
-#     vg: data
-#     size: 200g
-#     filesystem: xfs
-#     mountpoint: /mnt/disks/data2
 class LogicalVolume:
     SUPPORTED_FS = {"ext4", "xfs", "btrfs"}
 
@@ -283,8 +250,17 @@ class LogicalVolume:
         self._fs: Optional[str] = None
         self._mount: Optional[str] = None
 
+        self._path: Optional[str] = None
+        # device mapper path
+        self._dm_path: Optional[str] = None
+
         self.raw_data: dict[str, str] = {}
         self._lvm_info: Optional[dict[str, Any]] = None
+
+        self.state: Optional["LogicalVolume"] = None
+
+        self._device: Optional[Device] = None
+        self._is_exists: bool = False
 
         self.from_metadata(lv_data)
 
@@ -351,6 +327,10 @@ class LogicalVolume:
     def validate_size(self):
         return self._validate_field(self._size, self.size, "size", "lv_size")
 
+    @property
+    def lv_size(self) -> float:
+        return to_mib(self.size) if self.size else 0
+
     def _set_filesystem_meta(self, lv_data):
         self._fs = self._get_field_meta(lv_data, "filesystem")
 
@@ -366,12 +346,22 @@ class LogicalVolume:
             )
         return True
 
+    @property
+    def is_exists(self) -> bool:
+        return self._is_exists
+    
+    def has_filesystem(self) -> bool:
+        return self.is_device_attached() and self.is_exists and self._device.has_filesystem()
+
+    def has_same_filesystem(self):
+        if self.has_filesystem():
+            fs = self.fs
+            if fs:
+                return fs == self._device.fs_type
+        return False
+
     def _set_mountpoint_meta(self, lv_data):
         self._mount = self._get_field_meta(lv_data, "mountpoint")
-
-    @property
-    def mount(self) -> Optional[str]:
-        return self._get_property(self._mount)
 
     def validate_mountpoint(self):
         mount = self.mount
@@ -404,6 +394,22 @@ class LogicalVolume:
 
         return True
 
+    @property
+    def mount(self) -> Optional[str]:
+        return self._get_property(self._mount)
+
+    @property
+    def path(self) -> str:
+        return f"/dev/{self.vg}/{self.name}"
+    
+    @property
+    def dm_path(self) -> str:
+        return f"/dev/mapper/{self.vg}-{self.name}"
+    
+    @property
+    def paths(self) -> set[str]:
+        return {self.path, self.dm_path}
+
     @classmethod
     def from_lvm_info(cls, name: str, lvm_info: dict[str, Any]) -> Optional["LogicalVolume"]:
         for idx, lv_data in enumerate(lvm_info.get("lv", [])):
@@ -414,17 +420,59 @@ class LogicalVolume:
         return None
 
     @classmethod
-    def from_volume(cls, volume: "LogicalVolume") -> "LogicalVolume":
+    def from_volume(cls, volume: "LogicalVolume", include_state: bool = False) -> "LogicalVolume":
         lv = cls(volume.raw_data, volume.index)
         lv._lvm_info = volume._lvm_info
+
+        if include_state and volume.has_state():
+            lv.set_state(volume.state)
+
+        if volume.is_device_attached():
+            lv.attach_device(volume._device)
 
         return lv
     
     def set_state(self, volume: Optional["LogicalVolume"] = None):
         if volume is None:
             return
-        if self.name == volume.name:
+        if self.name == volume.name and self.vg == volume.vg:
             self.state = LogicalVolume.from_volume(volume)
+
+    def is_device_attached(self) -> bool:
+        return self._device is not None
+
+    def has_state(self) -> bool:
+        return self.state is not None
+
+    def attach_device(self, device: Device, pass_through=False):
+        if pass_through:
+            if device.path in self.paths:
+                self._device = device
+                self._is_exists = device.is_exists
+        else:
+            dev = Device.from_dev_info(self.path, device.raw_info)
+            self.attach_device(dev, pass_through=True)
+
+    def plan_template(self) -> dict:
+        return {
+            "name": self.name,
+            "path": self.path,
+            "action": "",
+        }
+
+    def plan(self):
+        plan = self.plan_template()
+        if self.is_exists:
+            plan["action"] = "skip"
+            if self.fs:
+                if self.has_filesystem():
+                    if not self.has_same_filesystem():
+                        raise AnsibleFilterError(f"Filesystem mismatch: actual={self._device.fs_type}, expected={self.fs}")
+                else:
+                    plan["action"] = "format"
+        else:
+            plan["action"] = "create" 
+        return plan
 
 class VolumeGroup:
     def __init__(self, vg_name: str, volumes = []):
@@ -441,10 +489,10 @@ class VolumeGroup:
             raise AnsibleFilterError(f"Expected 'vg_name' to be a non-empty string, got: {vg_name!r}")
 
         self._name: str = vg_name
-        self._exists: bool = False
+        self._is_exists: bool = False
 
         self._pvs: list[PhysicalVolume] = [] # Internal: ordered PVs attached to this VG
-        self._volumes = list[LogicalVolume] = []
+        self._volumes: list[LogicalVolume] = []
 
         self._tracked_names = set()
         self._duplicate: Optional[str] = None
@@ -455,6 +503,8 @@ class VolumeGroup:
 
         self.raw_info: dict[str, str] = {}
         self._lvm_info: Optional[dict[str, Any]] = None
+
+        self._vg_free: Optional[str] = None
 
         # Actual volume group state
         self.state: Optional["VolumeGroup"] = None
@@ -486,7 +536,8 @@ class VolumeGroup:
         # Find VG entry
         for vg in lvm_info.get("vg", []):
             if vg.get("vg_name") == self._name:
-                self._exists = True
+                self._is_exists = True
+                self._vg_free = vg["vg_free"]
                 self.raw_info = vg
                 break
 
@@ -503,19 +554,13 @@ class VolumeGroup:
 
         self._lvm_info = lvm_info
 
-    @classmethod
-    def from_lvm_info(cls, vg_name: str, lvm_info: dict[str, Any]) -> "VolumeGroup":
-        vg = cls(vg_name)
-        vg.from_metadata(lvm_info)
-        return vg
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def duplicate(self) -> Optional[str]:
         return self._duplicate
-
-    @property
-    def name(self) -> str:
-        return self._name
 
     @property
     def pvs(self) -> dict[str, PhysicalVolume]:
@@ -527,20 +572,66 @@ class VolumeGroup:
         """
         return {pv.path: pv for pv in self._pvs}
 
+    @property
+    def lvs(self) -> dict[str, LogicalVolume]:
+        return {lv.name: lv for lv in self._volumes}
+
+    @property
+    def vg_free(self) -> float:
+        if self.has_state():
+            return self.state.vg_free
+        return to_mib(self._vg_free) if self._vg_free else 0
+
+    def set_state(self, lvm_info: dict[str, Any]):
+        group = VolumeGroup.from_lvm_info(self.name, lvm_info)
+        self.state = group
+        for lv in self._volumes:
+            if lv.name in self.state.lvs:
+                lv.set_state(self.state.lvs[lv.name])
+
+    def has_state(self) -> bool:
+        return self.state is not None
+
+    @property
+    def is_exists(self) -> bool:
+        if self.has_state():
+            return self.state.is_exists
+        return self._is_exists
+
+    @classmethod
+    def from_lvm_info(cls, vg_name: str, lvm_info: dict[str, Any]) -> "VolumeGroup":
+        vg = cls(vg_name)
+        vg.from_metadata(lvm_info)
+        return vg
+
     def validate(self):
-        if not self._exists:
-            raise AnsibleFilterError(f"Volume group '{self._name}' not found in system.")
+        if not self.is_exists:
+            raise AnsibleFilterError(f"Volume group '{self.name}' not found in system.")
         return True
 
     def plan_pvs(self, paths: list[str]):
         if not isinstance(paths, list):
             raise AnsibleFilterError("Expected 'paths' to be a list.")
 
+        lvm_info = self.state._lvm_info if self.has_state() else self._lvm_info
+
         return [
-            PhysicalVolume.from_lvm_info(path, self._lvm_info).plan(self._name)
+            PhysicalVolume.from_lvm_info(path, lvm_info).plan(self.name)
             for path in paths
-            # if path not in self.pvs # to avoid 'skip' records
         ]
+
+    def plan_volume(self, volume: LogicalVolume) -> Optional[dict[str, str]]:
+        plan = volume.plan() if volume.is_device_attached() else volume.plan_template()
+
+        if self.has_state():
+            if volume.name not in self.state.lvs:
+                if volume.lv_size > self.state.vg_free:
+                    raise AnsibleFilterError(
+                        f"Not enough free space ({self.state._vg_free}) in VG '{self.name}' "
+                        f"to create LV '{volume.name}' with size {volume.size}"
+                    )
+                plan["action"] = "create"
+        return plan
 
 class VolumeInput:
     def __init__(self, volumes: list[dict]):

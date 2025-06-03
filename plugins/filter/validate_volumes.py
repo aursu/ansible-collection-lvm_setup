@@ -1,42 +1,4 @@
-import os
-from ansible.errors import AnsibleFilterError
-from ansible_collections.aursu.lvm_setup.plugins.module_utils.size_utils import to_mib
-from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.lvm_helpers import VolumeInput
-
-def validate_lv(lv, idx=0):
-    if not isinstance(lv, dict):
-        raise AnsibleFilterError(f"Volume entry #{idx + 1} must be a dictionary.")
-    
-    name = lv.get("name")
-    vg = lv.get("vg")
-    size = lv.get("size")
-
-    if not name or not isinstance(name, str):
-        raise AnsibleFilterError(f"Volume #{idx + 1} is missing a valid 'name' field.")
-
-    if not vg or not isinstance(vg, str):
-        raise AnsibleFilterError(f"Volume #{idx + 1} is missing a valid 'vg' field.")
-
-    if not size:
-        raise AnsibleFilterError(f"Volume '{name}' is missing a required 'size' field.")
-
-    fs = lv.get("filesystem")
-    if fs:
-        if not isinstance(fs, str):
-            raise AnsibleFilterError(f"Volume '{name}': 'filesystem' must be a string.")
-        if fs not in {"ext4", "xfs", "btrfs"}:
-            raise AnsibleFilterError(
-                f"Unsupported filesystem '{fs}' in volume '{name}'. Supported: ext4, xfs, btrfs."
-            )
-
-    mountpoint = lv.get("mountpoint")
-    if mountpoint:
-        if not isinstance(mountpoint, str):
-            raise AnsibleFilterError(f"Volume '{name}': 'mountpoint' must be a string.")
-        if not os.path.isabs(mountpoint):
-            raise AnsibleFilterError(f"Volume '{name}': 'mountpoint' must be an absolute path.")
-
-    return True
+from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.lvm_helpers import VolumeGroup,LogicalVolume, Device
 
 # +---------------------------------------+--------------------------------------------------------+
 # | Empty dev_info & lvm_info             | Formatted dev_info & lvm_info                          |
@@ -115,55 +77,19 @@ def validate_lv(lv, idx=0):
 # |                                       | }                                                      |
 # +---------------------------------------+--------------------------------------------------------+
 def validate_volume(lv, lvm_info, dev_info):
-    validate_lv(lv)
 
-    if not isinstance(lvm_info, dict):
-        raise AnsibleFilterError("Expected 'lvm_info' to be a dictionary.")
-    if not isinstance(dev_info, dict):
-        raise AnsibleFilterError("Expected 'dev_info' to be a dictionary.")
+    volume = LogicalVolume(lv)
+    volume.validate()
 
-    vg = lv.get("vg")
-    vg_list = {vg['vg_name']: vg for vg in lvm_info.get("vg", [])}
+    dev = Device.from_dev_info(volume.path, dev_info)
+    volume.attach_device(dev, pass_through=True)
 
-    if vg not in vg_list:
-        raise AnsibleFilterError(f"Volume group '{vg}' not found in system")
+    vg = VolumeGroup(volume.vg)
+    vg.set_state(lvm_info)
 
-    name = lv.get("name")
-    size = lv.get("size")
-    mountpoint = lv.get("mountpoint")
-    fs = lv.get("filesystem")
-    path = f"/dev/{vg}/{name}"
+    vg.validate()
 
-    entry = {
-        "name": name,
-        "path": path,
-        "action": ""
-    }
-
-    # if device /dev/<vg_name>/<lv_name> exists
-    if dev_info.get("is_exists"):
-        entry["action"] = "skip"
-        # check file system if defined
-        if fs:
-            # The 'blkid' field is present only after the LVM volume has been formatted with a filesystem.
-            blkid_type = dev_info.get("blkid", {}).get("type")
-            # optionally check filesystem match
-            if blkid_type:
-                if blkid_type != fs:
-                    raise AnsibleFilterError(f"Filesystem mismatch: actual={blkid_type}, expected={fs}")
-            else:
-                entry["action"] = "format"
-    else:
-        # now check if there's enough VG free space only if the device doesn't exist
-        vg_free = to_mib(vg_list[vg].get("vg_free", 0))
-        lv_size = to_mib(size)
-
-        if lv_size > vg_free:
-            raise AnsibleFilterError(f"Not enough free space ({vg_free}) in VG '{vg}' to create LV '{name}' with size {lv_size}")
-
-        entry["action"] = "create"
-
-    return entry
+    return vg.plan_volume(volume)
 
 class FilterModule(object):
     def filters(self):
