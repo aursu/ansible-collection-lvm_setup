@@ -10,6 +10,9 @@
   register: disk_stat
   loop: "{{ partitions.keys() }}"
 
+- debug: var=disk_stat
+  when: debug_mode | default(false)
+
 - name: Fail if disk does not exist
   ansible.builtin.fail:
     msg: "The specified disk {{ item.item }} does not exist on the system."

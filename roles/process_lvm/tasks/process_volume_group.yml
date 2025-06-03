@@ -1,6 +1,6 @@
 - name: Create or extend VG {{ vg_name }} from all partitions
   community.general.lvg:
     vg: "{{ vg_name }}"
-    pvs: "{{ partitions | aursu.lvm_setup.partition_paths_all }}"
+    pvs: "{{ partitions | aursu.lvm_setup.partition_paths_system }}"
     state: present
     remove_extra_pvs: false

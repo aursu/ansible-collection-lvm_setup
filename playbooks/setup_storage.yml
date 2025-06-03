@@ -6,6 +6,12 @@
     debug_mode: false
 
   roles:
-    - aursu.lvm_setup.process_disks
-    - aursu.lvm_setup.process_lvm
+    - role: aursu.lvm_setup.process_disks
+      vars:
+        validate_partitions: true
+
+    - role: aursu.lvm_setup.process_lvm
+      vars:
+        validate_partitions: false
+
     - aursu.lvm_setup.process_volumes

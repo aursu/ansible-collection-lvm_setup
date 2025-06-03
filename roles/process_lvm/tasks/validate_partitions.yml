@@ -20,7 +20,7 @@
     fail_msg: "Invalid structure in 'partitions' input."
 
 - name: Validate each partition on {{ disk }} for LVM compatibilty
-  ansible.builtin.include_tasks: validate_partition.yml
+  ansible.builtin.include_tasks: validate_lvm_partition.yml
   loop: "{{ parts }}"
   loop_control:
     label: "Partition {{ part.num }}"
@@ -30,7 +30,7 @@
 
 - name: Set full path for each partition
   ansible.builtin.set_fact:
-    pv_paths: "{{ disk | aursu.lvm_setup.partition_paths(parts) }}"
+    pv_paths: "{{ disk | aursu.lvm_setup.partition_paths_disk(parts) }}"
 
 - name: Get current physical volume information
   aursu.general.lvm_info:
