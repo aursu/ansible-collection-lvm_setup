@@ -81,7 +81,14 @@ answers ICMP while refusing every TCP port. On a guest with no console there is 
 
 ### Requires
 
-- `aursu.general >= 1.5.0`, for the new `aursu.general.fstab_info` module.
+- `aursu.general >= 1.6.0`, for the new `aursu.general.fstab_info` module.
+
+  ⚠ It must be 1.6.0, not 1.5.0. Galaxy has served `aursu.general` 1.5.0 since
+  2026-02-04, and that release does NOT contain `fstab_info` - it was published
+  from a working tree whose version bump was never committed, so the repository
+  read 1.4.0 while Galaxy read 1.5.0. A `>=1.5.0` requirement would resolve
+  happily against the published 1.5.0 and then fail at run time with
+  `couldn't resolve module/action aursu.general.fstab_info`.
 
   The static mount table is not obtainable from the live one. `dev_info` runs `findmnt -J`,
   which reports the device as actually mounted and the kernel's effective options; `nofail` and
