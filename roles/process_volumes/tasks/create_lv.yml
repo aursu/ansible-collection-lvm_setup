@@ -70,9 +70,13 @@
     - lv.filesystem is defined
     - lv.mountpoint is defined
 
-- debug: var=lv_mount_plan
+- name: Show the mount plan for {{ lv_path }}
+  ansible.builtin.debug:
+    var: lv_mount_plan
   when:
     - debug_mode | default(false)
+    - lv.mountpoint is defined
+| default(false)
     - lv.mountpoint is defined
 
 - name: Report what the mount plan will change for {{ lv_path }}
@@ -90,7 +94,7 @@
 #              here and actively dangerous: on a Kubernetes node the volume is
 #              bind-mounted into live pod paths and is busy, so a remount would
 #              turn a latent boot fault into an immediate outage.
-- name: Mount {{ lv_path }} or correct its fstab entry
+- name: Mount or correct the fstab entry for {{ lv_path }}
   ansible.posix.mount:
     path: "{{ lv.mountpoint }}"
     src: "{{ lv_plan.path }}"

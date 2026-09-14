@@ -1,0 +1,92 @@
+---
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # The collection must sit at ansible_collections/<ns>/<name> inside the
+      # workspace, because everything in it imports by the full
+      # ansible_collections.aursu.lvm_setup path. A plain checkout into the
+      # workspace root makes every import fail.
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/aursu/lvm_setup
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # pytest-subtests is not optional: the existing suite uses subtests, and
+      # without it those cases error rather than run.
+      - name: Install the test toolchain
+        run: pip install --disable-pip-version-check ansible-core pytest pytest-subtests
+
+      - name: Doctests
+        working-directory: ansible_collections/aursu/lvm_setup
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m doctest plugins/plugin_utils/mount_helpers.py -v | tail -3
+
+      - name: Unit tests
+        working-directory: ansible_collections/aursu/lvm_setup
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m pytest tests/unit -q
+
+  lint:
+    name: ansible-lint (advisory)
+    runs-on: ubuntu-latest
+
+    # ADVISORY, NOT A GATE - deliberately, and this should not stay that way.
+    #
+    # As of 2026-09-14 the collection has 72 ansible-lint violations, all of
+    # them pre-dating this workflow: bare `debug:` free-form calls, unnamed
+    # tasks, and var-naming[no-role-prefix] against the collection own
+    # convention of unprefixed public variables (vg_name, volumes, partitions).
+    # Making this blocking today would mean every run is red, which trains
+    # people to ignore it.
+    #
+    # The intent is a ratchet: watch the number fall, and flip
+    # continue-on-error to false once it reaches zero.
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/aursu/lvm_setup
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ansible-lint
+        run: pip install --disable-pip-version-check ansible-lint
+
+      # Without this, create_lv.yml raises a syntax-check failure for
+      # aursu.general.fstab_info and the report is dominated by a module that is
+      # simply not installed. Tracking main rather than the pinned tag keeps the
+      # lint job from being blocked on a release being cut.
+      - name: Install the runtime dependency so module references resolve
+        run: >-
+          ansible-galaxy collection install
+          git+https://github.com/aursu/ansible-collection-general.git,main
+
+      # continue-on-error above means a non-zero exit here does not fail the
+      # build. The count is printed so the ratchet is visible in the log.
+      - name: Lint the roles and playbooks
+        working-directory: ansible_collections/aursu/lvm_setup
+        run: |
+          set +e
+          ansible-lint roles/ playbooks/
+          rc=$?
+          echo "--- ansible-lint exit ${rc}; target is 0 failures, see the job comment ---"
+          exit $rc
