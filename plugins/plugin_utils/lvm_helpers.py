@@ -325,6 +325,7 @@ class LogicalVolume:
         self._size: Optional[str] = None
         self._fs: Optional[str] = None
         self._mount: Optional[str] = None
+        self._opts: Optional[str] = None
 
         self._path: Optional[str] = None
         # device mapper path
@@ -445,6 +446,39 @@ class LogicalVolume:
             raise AnsibleFilterError(f"Volume '{self.name}': 'mountpoint' must be an absolute path.")
         return True
 
+    def _set_opts_meta(self, lv_data):
+        self._opts = self._get_field_meta(lv_data, "opts", "options")
+
+    @property
+    def opts(self) -> Optional[str]:
+        """Mount options exactly as they should appear in /etc/fstab.
+
+        None means "not specified"; the caller supplies a default. An empty
+        string is rejected rather than silently treated as 'defaults', because
+        an empty options field in fstab is a syntax error.
+        """
+        return self._get_property(self._opts)
+
+    def validate_opts(self):
+        opts = self.opts
+        if self._opts is None:
+            return True
+
+        self._validate_field(self._opts, opts, "opts", "options")
+
+        tokens = [t for t in opts.split(",") if t.strip()]
+        if not tokens:
+            raise AnsibleFilterError(
+                f"Volume '{self.name}': 'opts' must contain at least one mount option."
+            )
+        for token in tokens:
+            if token != token.strip():
+                raise AnsibleFilterError(
+                    f"Volume '{self.name}': mount option {token!r} has surrounding whitespace; "
+                    f"fstab fields are whitespace-delimited, so this would corrupt the line."
+                )
+        return True
+
     def from_metadata(self, lv_data: dict[str, str]) -> None:
         if not isinstance(lv_data, dict):
             raise AnsibleFilterError(f"Volume entry must be a dictionary{self._msg_for}. Found: {lv_data}")
@@ -454,6 +488,7 @@ class LogicalVolume:
         self._set_size_meta(lv_data)
         self._set_filesystem_meta(lv_data)
         self._set_mountpoint_meta(lv_data)
+        self._set_opts_meta(lv_data)
 
         self.validate_name()
         self.validate_group()
@@ -467,6 +502,7 @@ class LogicalVolume:
         self.validate_size()
         self.validate_filesystem()
         self.validate_mountpoint()
+        self.validate_opts()
 
         return True
 
@@ -588,6 +624,7 @@ class VolumeGroup:
     def add_volume(self, volume: LogicalVolume):
         volume.validate_filesystem()
         volume.validate_mountpoint()
+        volume.validate_opts()
 
         self._volumes.append(volume)
 

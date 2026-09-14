@@ -49,13 +49,55 @@
     mode: '0755'
   when: lv.mountpoint is defined
 
-- name: Mount logical volume
+# The static mount table, which the live one cannot stand in for: `nofail` is a
+# directive to the systemd fstab generator rather than a kernel mount option, so
+# it never appears in live output. Reading it is also the only way to notice an
+# fstab source that no longer resolves - the running mount looks healthy right up
+# until the next boot.
+- name: Read the fstab entry for {{ lv.mountpoint | default('(no mountpoint)') }}
+  aursu.general.fstab_info:
+    path: "{{ lv.mountpoint }}"
+  register: lv_fstab
+  when:
+    - lv.filesystem is defined
+    - lv.mountpoint is defined
+
+- name: Plan the mount of {{ lv_path }}
+  ansible.builtin.set_fact:
+    lv_mount_plan: >-
+      {{ lv | aursu.lvm_setup.mount_plan(dev_info, lv_fstab.entry, lvm_mount_opts_default) }}
+  when:
+    - lv.filesystem is defined
+    - lv.mountpoint is defined
+
+- debug: var=lv_mount_plan
+  when:
+    - debug_mode | default(false)
+    - lv.mountpoint is defined
+
+- name: Report what the mount plan will change for {{ lv_path }}
+  ansible.builtin.debug:
+    msg: "{{ lv_mount_plan.action }}: {{ lv_mount_plan.reasons | join('; ') }}"
+  when:
+    - lv.filesystem is defined
+    - lv.mountpoint is defined
+    - lv_mount_plan.action != "skip"
+
+# state is chosen by the plan, and the distinction matters:
+#   mounted  - the volume is not mounted; mount it and record it.
+#   present  - the volume IS mounted, only the fstab line is wrong. Rewrite the
+#              file and leave the running mount alone. A remount is unnecessary
+#              here and actively dangerous: on a Kubernetes node the volume is
+#              bind-mounted into live pod paths and is busy, so a remount would
+#              turn a latent boot fault into an immediate outage.
+- name: Mount {{ lv_path }} or correct its fstab entry
   ansible.posix.mount:
     path: "{{ lv.mountpoint }}"
     src: "{{ lv_plan.path }}"
     fstype: "{{ lv.filesystem }}"
-    state: mounted
+    opts: "{{ lv_mount_plan.opts }}"
+    state: "{{ lv_mount_plan.mount_state }}"
   when:
     - lv.filesystem is defined
     - lv.mountpoint is defined
-    - not (lv | aursu.lvm_setup.validate_mount(dev_info))
+    - lv_mount_plan.action != "skip"

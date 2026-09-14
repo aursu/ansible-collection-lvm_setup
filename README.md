@@ -65,6 +65,19 @@ volumes:
     mountpoint: /mnt/disks/data2
 ```
 
+
+Each volume also accepts an optional `opts:` (aliased `options:`), the mount options written to
+`/etc/fstab`. When omitted, `lvm_mount_opts_default` applies - **`defaults,nofail`**.
+
+`nofail` is deliberate and load-bearing: without it a non-root mount that fails takes
+`local-fs.target` with it, the host never reaches `multi-user.target`, and it answers ICMP while
+refusing every TCP port. On a guest with no console that is unrecoverable.
+
+Since 1.3.0 the role also notices a volume that is mounted correctly but **recorded** wrongly - an
+`/etc/fstab` source that no longer resolves, or options that are missing - and corrects the file
+with `state: present`, leaving the running mount untouched. See
+`roles/process_volumes/README.md`.
+
 ## Requirements
 
 * Python 3.8+

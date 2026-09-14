@@ -1,0 +1,16 @@
+---
+# Mount options written to /etc/fstab for any volume that does not declare its
+# own `opts:`.
+#
+# `nofail` is the load-bearing part and the reason this default exists at all.
+# Without it, a non-root mount that fails - a missing device after a volume group
+# is renamed, a dirty log after an unclean shutdown - fails `local-fs.target`.
+# The host then never reaches `multi-user.target`, never starts sshd, and answers
+# ICMP while refusing every TCP port. On a guest with no console there is no way
+# back in.
+#
+# Network filesystems additionally need `_netdev`. That is NOT inferred from the
+# filesystem type, because this collection only ever creates local filesystems
+# (ext4, xfs, btrfs - see LogicalVolume.SUPPORTED_FS); a caller mounting anything
+# else should set `opts:` on the volume explicitly.
+lvm_mount_opts_default: defaults,nofail
