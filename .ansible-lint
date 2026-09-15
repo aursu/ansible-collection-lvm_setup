@@ -1,0 +1,28 @@
+---
+# The lint job is BLOCKING. This file is what makes that survivable: the rules
+# below are reported and do not fail the build, everything else does.
+#
+# The history matters. The job used to carry `continue-on-error: true`, which
+# discarded every result - so when 1.3.0 shipped a create_lv.yml that could not
+# be parsed, ansible-lint reported `load-failure[yaml]` at line 79 and exited 2,
+# and the build went green anyway. A blanket switch was used where a targeted one
+# existed.
+#
+# `load-failure` and `syntax-check` are tagged `unskippable`: ansible-lint will
+# not let them be warn-listed no matter what appears below. That is the whole
+# reason this arrangement is safe - the rules that catch a file being unreadable
+# cannot be silenced by widening this list later.
+#
+# These are stylistic and pre-existing. The intent is a ratchet: shorten the list,
+# do not lengthen it.
+warn_list:
+  - fqcn             # unqualified builtin actions (debug:, set_fact:)
+  - name             # unnamed tasks, casing of names
+  - var-naming       # unprefixed public variables: vg_name, volumes, partitions
+  - key-order        # `name` not first within a task
+  - no-free-form     # debug msg=... rather than msg: ...
+
+# Collections installed into the checkout would otherwise be linted as if they
+# were part of this repository, duplicating every finding.
+exclude_paths:
+  - .ansible/

@@ -30,16 +30,6 @@ jobs:
       - name: Install the test toolchain
         run: pip install --disable-pip-version-check ansible-core pytest pytest-subtests
 
-      # A YAML error in a task file reached through include_tasks is invisible to
-      # both the unit tests and --syntax-check, so 1.3.0 shipped an unparseable
-      # create_lv.yml. This reads every YAML file in the collection.
-      # After the toolchain install, not before: this needs PyYAML, which arrives
-      # with ansible-core. Ordering it earlier is how it failed with exit 2 on its
-      # first run.
-      - name: Every YAML file parses
-        working-directory: ansible_collections/aursu/lvm_setup
-        run: python .github/scripts/yaml_check.py
-
       - name: Doctests
         working-directory: ansible_collections/aursu/lvm_setup
         env:
@@ -53,29 +43,19 @@ jobs:
         run: python -m pytest tests/unit -q
 
   lint:
-    name: ansible-lint (advisory)
+    name: ansible-lint
     runs-on: ubuntu-latest
 
-    # ADVISORY, NOT A GATE - deliberately, and this should not stay that way.
+    # BLOCKING. It was not, and that is how 1.3.0 shipped an unparseable
+    # create_lv.yml: ansible-lint reported load-failure[yaml] at line 79 and
+    # exited 2, and continue-on-error discarded the result, because a file that
+    # cannot be read was treated the same as a naming-convention warning.
     #
-    # As of 2026-09-14 the collection has 72 ansible-lint violations, all of
-    # them pre-dating this workflow: bare `debug:` free-form calls, unnamed
-    # tasks, and var-naming[no-role-prefix] against the collection own
-    # convention of unprefixed public variables (vg_name, volumes, partitions).
-    # Making this blocking today would mean every run is red, which trains
-    # people to ignore it.
-    #
-    # The intent is a ratchet: watch the number fall, and flip
-    # continue-on-error to false once it reaches zero.
-    #
-    # BUT: this is exactly how 1.3.0 shipped an unparseable create_lv.yml.
-    # ansible-lint caught it - load-failure[yaml] at create_lv.yml:79:3, exit 2 -
-    # and continue-on-error discarded the result, because a fatal parse failure
-    # was treated the same as a naming-convention warning. A file that cannot be
-    # read is not a style opinion. That class is now gated separately and
-    # blockingly by .github/scripts/yaml_check.py, which is why this job can stay
-    # advisory without hiding the one thing it must not hide.
-    continue-on-error: true
+    # The 72 pre-existing stylistic violations that motivated that switch are now
+    # warn-listed by name in .ansible-lint, so they report without failing. The
+    # rules that matter - load-failure and syntax-check - are tagged unskippable
+    # and cannot be warn-listed away, which is what makes blocking safe rather
+    # than merely strict.
 
     steps:
       - uses: actions/checkout@v4
@@ -89,22 +69,18 @@ jobs:
       - name: Install ansible-lint
         run: pip install --disable-pip-version-check ansible-lint
 
-      # Without this, create_lv.yml raises a syntax-check failure for
-      # aursu.general.fstab_info and the report is dominated by a module that is
-      # simply not installed. Tracking main rather than the pinned tag keeps the
-      # lint job from being blocked on a release being cut.
-      - name: Install the runtime dependency so module references resolve
-        run: >-
-          ansible-galaxy collection install
-          git+https://github.com/aursu/ansible-collection-general.git,main
+      # syntax-check resolves module references against installed collections, so
+      # every collection the roles call must be present or the report is dominated
+      # by modules that are simply absent. aursu.general tracks main rather than the
+      # pinned tag so the lint job is not blocked on a release being cut.
+      - name: Install the collections the roles call
+        run: |
+          ansible-galaxy collection install \
+            git+https://github.com/aursu/ansible-collection-general.git,main
+          ansible-galaxy collection install community.general ansible.posix
 
-      # continue-on-error above means a non-zero exit here does not fail the
-      # build. The count is printed so the ratchet is visible in the log.
+      # .ansible-lint warn-lists the pre-existing stylistic rules; everything else
+      # fails the build, load-failure and syntax-check included.
       - name: Lint the roles and playbooks
         working-directory: ansible_collections/aursu/lvm_setup
-        run: |
-          set +e
-          ansible-lint roles/ playbooks/
-          rc=$?
-          echo "--- ansible-lint exit ${rc}; target is 0 failures, see the job comment ---"
-          exit $rc
+        run: ansible-lint roles/ playbooks/

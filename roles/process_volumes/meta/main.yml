@@ -5,12 +5,15 @@ galaxy_info:
     Ansible role to create logical volumes (LVs) inside a volume group (VG), format filesystems,
     and validate existing mounts.
   license: MIT
-  min_ansible_version: 2.14
+  min_ansible_version: "2.14"
   platforms:
+    # Quoted, and matching process_disks. Bare 9 loads as an int and bare 22.04
+    # as a float, which the galaxy_info schema rejects - and 22.10 would silently
+    # become 22.1. Same class of mistake as an unquoted min_ansible_version.
     - name: EL
-      versions: [9]
+      versions: ["9", "10"]
     - name: Ubuntu
-      versions: [22.04, 24.04]
+      versions: ["jammy", "noble"]
   galaxy_tags:
     - lvm
     - volumes

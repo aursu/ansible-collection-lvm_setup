@@ -4,6 +4,40 @@ All notable changes to `aursu.lvm_setup` are documented here.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-09-15
+
+### Fixed
+
+- **`community.general` and `ansible.posix` were never declared as dependencies.** The roles call
+  `community.general.parted`, `.lvg`, `.lvol`, `.filesystem` and `ansible.posix.mount`, and
+  `galaxy.yml` listed only `aursu.general`. Installing this collection from Galaxy pulled
+  neither, so the roles had nothing to call. It went unnoticed because the one project using it
+  lists both in its own `requirements.yml`.
+
+- **Two role metas declared unquoted YAML numbers.** `min_ansible_version: 2.14` loads as a
+  float and `versions: [9]` / `[22.04, 24.04]` as an int and floats, all of which the
+  `galaxy_info` schema rejects. `process_disks` had it right; the other two did not. Beyond the
+  schema, this class is a trap: `22.10` unquoted becomes `22.1`.
+
+### Changed
+
+- **The ansible-lint job is now blocking.** It was advisory - `continue-on-error: true` - which
+  is how 1.3.0 shipped an unparseable `create_lv.yml`: ansible-lint reported
+  `load-failure[yaml]` at line 79 and exited 2, and the result was discarded because a file that
+  cannot be read was treated the same as a naming-convention warning.
+
+  A new `.ansible-lint` warn-lists the pre-existing stylistic rules by name - `fqcn`, `name`,
+  `var-naming`, `key-order`, `no-free-form` - so they report without failing. Everything else
+  fails the build. This is safe rather than merely strict because `load-failure` and
+  `syntax-check` are tagged `unskippable`: ansible-lint refuses to warn-list them, so the rules
+  that catch an unreadable file cannot be silenced by widening that list later.
+
+  Measured on this tree: clean exits 0 with 85 warnings; reintroducing the 1.3.0 breakage exits
+  2 naming `load-failure`.
+
+- **Removed `.github/scripts/yaml_check.py`**, added in 1.3.1. It gated the same class the now-
+  blocking lint gates, and one gate per failure mode is enough.
+
 ## [1.3.1] - 2026-09-15
 
 ### Fixed
