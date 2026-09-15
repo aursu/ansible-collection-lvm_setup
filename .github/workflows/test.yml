@@ -31,6 +31,7 @@ jobs:
       # both the unit tests and --syntax-check, so 1.3.0 shipped an unparseable
       # create_lv.yml. This reads every YAML file in the collection.
       - name: Every YAML file parses
+        working-directory: ansible_collections/aursu/lvm_setup
         run: python .github/scripts/yaml_check.py
 
       - name: Install the test toolchain
@@ -63,6 +64,14 @@ jobs:
     #
     # The intent is a ratchet: watch the number fall, and flip
     # continue-on-error to false once it reaches zero.
+    #
+    # BUT: this is exactly how 1.3.0 shipped an unparseable create_lv.yml.
+    # ansible-lint caught it - load-failure[yaml] at create_lv.yml:79:3, exit 2 -
+    # and continue-on-error discarded the result, because a fatal parse failure
+    # was treated the same as a naming-convention warning. A file that cannot be
+    # read is not a style opinion. That class is now gated separately and
+    # blockingly by .github/scripts/yaml_check.py, which is why this job can stay
+    # advisory without hiding the one thing it must not hide.
     continue-on-error: true
 
     steps:

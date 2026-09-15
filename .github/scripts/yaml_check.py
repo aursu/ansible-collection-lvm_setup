@@ -10,19 +10,27 @@ orphaned fragment in roles/process_volumes/tasks/create_lv.yml:
     | default(false)                 <- orphan
       - lv.mountpoint is defined     <- duplicate
 
-That file is unparseable, and 1.3.0 shipped it to Galaxy anyway. Nothing in CI
-was in a position to notice:
+That file is unparseable, and 1.3.0 shipped it to Galaxy anyway.
 
-* the unit tests exercise the Python filters, and never read a task file;
-* ``ansible-playbook --syntax-check`` parses a play and what it *statically*
-  includes, and ``create_lv.yml`` is reached through ``include_tasks``, which is
-  dynamic - so it is not read until the task actually runs;
-* ``ansible-galaxy collection build`` copies files without parsing them.
+CI did detect it. ansible-lint reported ``load-failure[yaml]`` at
+``create_lv.yml:79:3`` and exited 2 - and the lint job carries
+``continue-on-error: true``, added because a dozen style violations would
+otherwise have made every run red. So a file that cannot be parsed at all was
+discarded alongside naming-convention warnings, and the build went green.
 
-So the first thing to object was a live run against a real host, after the
-partition and the volume group had already been created. A YAML error is the
-cheapest possible defect to detect and one of the more expensive to discover
-half-way through provisioning a disk.
+Nothing else was positioned to notice either: the unit tests exercise the Python
+filters and never read a task file; ``ansible-playbook --syntax-check`` parses a
+play and what it *statically* includes, and ``create_lv.yml`` is reached through
+``include_tasks``, which is dynamic; and ``ansible-galaxy collection build``
+copies files without parsing them.
+
+So the first thing to object *audibly* was a live run against a real host, after
+the partition and the volume group had already been created.
+
+Hence this script rather than simply making the lint blocking. A file that cannot
+be read is not a style opinion, and it should not share a gate with one: this
+check is small, blocking, and has nothing to say about style, so the lint ratchet
+can stay advisory without hiding the one class of failure it must never hide.
 
 Usage::
 

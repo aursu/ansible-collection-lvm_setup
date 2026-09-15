@@ -25,11 +25,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and the volume group have been created, so the disk is left half-provisioned: PV and VG
   present, no logical volume, no filesystem, no mount.
 
-  Nothing in CI was in a position to catch it. The unit tests exercise the Python filters and
-  never read a task file; `ansible-playbook --syntax-check` parses a play and what it
-  *statically* includes, and `create_lv.yml` is reached through `include_tasks`, which is
-  dynamic; and `ansible-galaxy collection build` copies files without parsing them. The first
-  thing to object was a live run against real hardware.
+  CI detected it and was told to ignore it. ansible-lint reported
+  `load-failure[yaml]` at `create_lv.yml:79:3` and exited 2 - but the lint job carries
+  `continue-on-error: true`, added so that a dozen style violations would not make every run
+  red. A file that cannot be parsed at all was discarded alongside naming-convention warnings,
+  and the build went green.
+
+  Nothing else was positioned to notice: the unit tests exercise the Python filters and never
+  read a task file; `ansible-playbook --syntax-check` parses a play and what it *statically*
+  includes, and `create_lv.yml` is reached through `include_tasks`, which is dynamic; and
+  `ansible-galaxy collection build` copies files without parsing them. So the first thing to
+  object audibly was a live run against real hardware.
 
   `.github/scripts/yaml_check.py` now parses every YAML file in the collection, in both the test
   and release workflows. Verified against the broken tree: exit 1, naming the file and line.
