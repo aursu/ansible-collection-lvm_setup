@@ -27,15 +27,18 @@ jobs:
 
       # pytest-subtests is not optional: the existing suite uses subtests, and
       # without it those cases error rather than run.
+      - name: Install the test toolchain
+        run: pip install --disable-pip-version-check ansible-core pytest pytest-subtests
+
       # A YAML error in a task file reached through include_tasks is invisible to
       # both the unit tests and --syntax-check, so 1.3.0 shipped an unparseable
       # create_lv.yml. This reads every YAML file in the collection.
+      # After the toolchain install, not before: this needs PyYAML, which arrives
+      # with ansible-core. Ordering it earlier is how it failed with exit 2 on its
+      # first run.
       - name: Every YAML file parses
         working-directory: ansible_collections/aursu/lvm_setup
         run: python .github/scripts/yaml_check.py
-
-      - name: Install the test toolchain
-        run: pip install --disable-pip-version-check ansible-core pytest pytest-subtests
 
       - name: Doctests
         working-directory: ansible_collections/aursu/lvm_setup
