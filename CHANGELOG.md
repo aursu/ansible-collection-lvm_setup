@@ -4,6 +4,36 @@ All notable changes to `aursu.lvm_setup` are documented here.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-09-15
+
+### Fixed
+
+- **1.3.0 shipped an unparseable task file and could not provision anything.**
+  `roles/process_volumes/tasks/create_lv.yml` carried an orphaned fragment left by a botched
+  line-based edit:
+
+  ```yaml
+  when:
+    - debug_mode | default(false)
+    - lv.mountpoint is defined
+  | default(false)                 # orphan
+    - lv.mountpoint is defined     # duplicate
+  ```
+
+  Any run reached `process_volumes` and died with *"While scanning a block scalar did not find
+  expected comment or line break"*. On a from-scratch host that happens **after** the partition
+  and the volume group have been created, so the disk is left half-provisioned: PV and VG
+  present, no logical volume, no filesystem, no mount.
+
+  Nothing in CI was in a position to catch it. The unit tests exercise the Python filters and
+  never read a task file; `ansible-playbook --syntax-check` parses a play and what it
+  *statically* includes, and `create_lv.yml` is reached through `include_tasks`, which is
+  dynamic; and `ansible-galaxy collection build` copies files without parsing them. The first
+  thing to object was a live run against real hardware.
+
+  `.github/scripts/yaml_check.py` now parses every YAML file in the collection, in both the test
+  and release workflows. Verified against the broken tree: exit 1, naming the file and line.
+
 ## [1.3.0] - 2026-09-14
 
 ### Changed - read this before upgrading

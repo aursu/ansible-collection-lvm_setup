@@ -76,8 +76,6 @@
   when:
     - debug_mode | default(false)
     - lv.mountpoint is defined
-| default(false)
-    - lv.mountpoint is defined
 
 - name: Report what the mount plan will change for {{ lv_path }}
   ansible.builtin.debug:

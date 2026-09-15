@@ -27,6 +27,12 @@ jobs:
 
       # pytest-subtests is not optional: the existing suite uses subtests, and
       # without it those cases error rather than run.
+      # A YAML error in a task file reached through include_tasks is invisible to
+      # both the unit tests and --syntax-check, so 1.3.0 shipped an unparseable
+      # create_lv.yml. This reads every YAML file in the collection.
+      - name: Every YAML file parses
+        run: python .github/scripts/yaml_check.py
+
       - name: Install the test toolchain
         run: pip install --disable-pip-version-check ansible-core pytest pytest-subtests
 
