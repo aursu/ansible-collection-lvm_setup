@@ -36,7 +36,8 @@ Usage::
 
     python .github/scripts/yaml_check.py [root]
 
-Exit codes: ``0`` every file parsed, ``1`` at least one did not.
+Exit codes: ``0`` every file parsed, ``1`` at least one did not, ``2`` the check
+itself could not run.
 """
 
 import os
@@ -71,8 +72,11 @@ def main(argv=None):
     try:
         import yaml
     except ImportError:
+        # Exit 2, not 1: "the check could not run" must not read the same as
+        # "a file is broken". Ordering this step ahead of the toolchain
+        # install is exactly how those two got confused once already.
         sys.stderr.write("PyYAML is required: pip install ansible-core\n")
-        return 1
+        return 2
 
     checked = failed = 0
     for path in yaml_files(root):
