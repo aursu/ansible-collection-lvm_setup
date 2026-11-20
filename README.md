@@ -73,6 +73,10 @@ Each volume also accepts an optional `opts:` (aliased `options:`), the mount opt
 `local-fs.target` with it, the host never reaches `multi-user.target`, and it answers ICMP while
 refusing every TCP port. On a guest with no console that is unrecoverable.
 
+Since 1.4.0 a volume may also carry `pvs:` - a list of physical volumes to create it on. With one VG
+over several disks this keeps each LV on the disk you chose, and the free-space check is made against
+those PVs. See `roles/process_volumes/README.md`.
+
 Since 1.3.0 the role also notices a volume that is mounted correctly but **recorded** wrongly - an
 `/etc/fstab` source that no longer resolves, or options that are missing - and corrects the file
 with `state: present`, leaving the running mount untouched. See

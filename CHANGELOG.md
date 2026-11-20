@@ -4,6 +4,39 @@ All notable changes to `aursu.lvm_setup` are documented here.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-11-20
+
+### Added
+
+- **`pvs:` on a volume pins the LV to named physical volumes.** With one VG over several disks,
+  LVM allocates a new LV wherever it finds space, and an LV can end up spread across two disks, so
+  losing either one loses it. A volume may now list the PVs it is created on:
+
+  ```yaml
+  - { name: docker, vg: data, size: 250g, filesystem: xfs, mountpoint: /var/lib/docker,
+      pvs: [/dev/nvme0n1p4] }
+  ```
+
+  The list is passed to `community.general.lvol`. It must be non-empty, of absolute paths, without
+  duplicates, and every PV in it must belong to the volume's VG - checked for an existing LV too,
+  so a typo fails at once rather than at the next create. Optional; without it nothing changes.
+
+- **For a pinned volume the free-space check counts its PVs, not the VG.** Checked against
+  `vg_free`, a VG with room on one disk would pass a volume headed for the other, full one, and
+  `lvcreate` would fail mid-run. With `pvs` the check sums `pv_free` on those PVs. To have that
+  data, `create_lv.yml` reads `lvm_info` with `filter: all` instead of `vgs,lvs`; `all` is in
+  `aursu.general` since 1.6.0, the minimum already declared.
+
+### Tests
+
+- First tests of `validate_volume` (`tests/unit/plugins/filter/test_validate_volume.py`, 10 cases).
+  Run against 1.3.2, 7 of them fail and the 3 covering unchanged behaviour pass.
+
+### Not covered
+
+- Whether an **existing** LV still lies only on its `pvs` is not verified: `aursu.general.lvm_info`
+  runs `lvs` without `devices`. Volumes are still never extended by this role.
+
 ## [1.3.2] - 2026-09-15
 
 ### Fixed
@@ -170,4 +203,5 @@ answers ICMP while refusing every TCP port. On a guest with no console there is 
 
 Baseline for this changelog; earlier releases are recorded in the git history only.
 
+[1.4.0]: https://github.com/aursu/ansible-collection-lvm_setup/releases/tag/v1.4.0
 [1.3.0]: https://github.com/aursu/ansible-collection-lvm_setup/releases/tag/v1.3.0

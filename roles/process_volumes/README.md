@@ -39,6 +39,31 @@ volumes:
 | `filesystem` | no | One of `ext4`, `xfs`, `btrfs`. Omit to create the LV without formatting it. |
 | `mountpoint` | no | Absolute path. Omit to create the volume and leave mounting to something else. |
 | `opts` | no | Mount options written to `/etc/fstab`, e.g. `defaults,nofail,noatime`. Aliased as `options`. Defaults to `lvm_mount_opts_default`. |
+| `pvs` | no | Non-empty list of physical volume paths the LV is created on, e.g. `[/dev/nvme0n1p4]`. Omit to let LVM allocate anywhere in the VG. See below. |
+
+## Pinning a volume to physical volumes
+
+When one VG spans several disks, LVM allocates a new LV wherever it finds space, and a single LV can
+end up across two disks - losing either disk then loses that LV. `pvs` pins it:
+
+```yaml
+volumes:
+  - name: docker
+    vg: data
+    size: 250g
+    filesystem: xfs
+    mountpoint: /var/lib/docker
+    pvs: [/dev/nvme0n1p4]
+```
+
+- The LV is created with `community.general.lvol` `pvs`, so LVM allocates only on those PVs.
+- The free-space check counts the free space **on those PVs**, not on the whole VG: the group can
+  have room while the named disk does not.
+- Every listed PV must belong to the volume's VG. That is checked for an existing LV as well, so a
+  typo fails immediately rather than at the next create.
+
+`pvs` governs **creation**. The role does not yet verify that an existing LV still lies only on the
+listed PVs (that needs `devices` from `lvm_info`), and it does not extend volumes.
 
 ## Role Defaults
 
