@@ -14,3 +14,15 @@
 # (ext4, xfs, btrfs - see LogicalVolume.SUPPORTED_FS); a caller mounting anything
 # else should set `opts:` on the volume explicitly.
 lvm_mount_opts_default: defaults,nofail
+
+# Packages providing the tools this role calls: lvm2 for lvs/vgs
+# (aursu.general.lvm_info) and community.general.lvol; plus, per filesystem a
+# volume declares, the package(s) with its mkfs - a name or a list of names.
+# Only the filesystems actually requested are installed (filter
+# required_packages). Same names on EL and Ubuntu; override where they differ.
+process_volumes_packages:
+  - lvm2
+process_volumes_filesystem_packages:
+  xfs: xfsprogs
+  ext4: e2fsprogs
+  btrfs: btrfs-progs

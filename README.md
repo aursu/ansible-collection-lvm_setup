@@ -21,6 +21,7 @@ This collection includes filter plugins for validating input and planning storag
 
 - `validate_partitions`, `partition_path`, `partition_paths`
 - `validate_lvm_partition`, `validate_pvs`, `validate_vg`, `validate_volume`, `validate_mount`
+- `required_packages` - OS packages a set of volumes needs (since 1.5.0)
 - Utility filters: `to_mib`, `mib`
 
 ## Example Playbook
@@ -86,13 +87,22 @@ with `state: present`, leaving the running mount untouched. See
 
 * Python 3.8+
 * Ansible 2.14+
-* `community.general` collection (for `parted` module)
+* Collections `aursu.general`, `community.general`, `ansible.posix` - declared in `galaxy.yml`,
+  installed with this one from Galaxy.
 
-Install dependency manually (if needed):
+### System packages
 
-```bash
-ansible-galaxy collection install community.general
-```
+Since 1.5.0 each role installs the packages whose tools it calls, as its first step:
+
+| Role | Packages (role default) |
+|---|---|
+| `process_disks` | `parted` (`process_disks_packages`) |
+| `process_lvm` | `lvm2`, `parted` (`process_lvm_packages`) |
+| `process_volumes` | `lvm2` (`process_volumes_packages`), plus the mkfs package of each filesystem the volumes declare: `xfsprogs`, `e2fsprogs`, `btrfs-progs` (`process_volumes_filesystem_packages`) |
+
+The names are the same on EL and Ubuntu. Override the variables where a platform differs. On a
+host whose root is not on LVM, `lvm2` is often absent, and before 1.5.0 the roles failed on it
+with `Failed to find required executable "pvs"`.
 
 ## Testing Filters
 
