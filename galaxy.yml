@@ -9,7 +9,7 @@ namespace: aursu
 name: lvm_setup
 
 # The version of the collection. Must be compatible with semantic versioning
-version: 1.5.0
+version: 1.6.0
 
 # The path to the Markdown (.md) readme file. This path is relative to the root of the collection
 readme: README.md
@@ -53,7 +53,7 @@ dependencies:
   # Galaxy pulled neither, so process_disks/process_lvm/process_volumes had no
   # parted, lvg, lvol, filesystem or mount to call. It worked in crytek-ansible
   # only because that project's requirements.yml happens to list them too.
-  aursu.general: ">=1.6.0"
+  aursu.general: ">=1.9.0"
   community.general: ">=10.0.0"
   ansible.posix: ">=1.5.0"
 
@@ -82,6 +82,8 @@ build_ignore:
   # CI configuration and release tooling. Useful in the repository, dead weight
   # for anyone installing the collection.
   - .github
+  # Per-change development notes: the reasoning behind the code, for its maintainers.
+  - notes
   - docker-compose.yml
 
 # A dict controlling use of manifest directives used in building the collection artifact. The key 'directives' is a

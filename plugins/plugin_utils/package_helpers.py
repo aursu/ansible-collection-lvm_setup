@@ -14,6 +14,7 @@ gives a clear error for a filesystem nobody mapped.
 from typing import Any
 
 from ansible.errors import AnsibleFilterError
+from ansible_collections.aursu.general.plugins.plugin_utils.packages import PackageNames
 from ansible_collections.aursu.lvm_setup.plugins.plugin_utils.lvm_helpers import LogicalVolume
 
 
@@ -34,9 +35,9 @@ class RequiredPackages:
                 f"Expected 'filesystem_packages' to be a dict, got {type(filesystem_packages).__name__}."
             )
 
-        self._base = self._package_list(base_packages, "base_packages")
+        self._base = PackageNames(base_packages, "base_packages").names
         self._by_filesystem = {
-            fs: self._package_list(packages, f"filesystem_packages[{fs!r}]")
+            fs: PackageNames(packages, f"filesystem_packages[{fs!r}]").names
             for fs, packages in filesystem_packages.items()
         }
 
@@ -45,17 +46,6 @@ class RequiredPackages:
         self._volumes = [LogicalVolume(volume, idx) for idx, volume in enumerate(volumes)]
         for volume in self._volumes:
             volume.validate_filesystem()
-
-    @staticmethod
-    def _package_list(value: Any, name: str) -> tuple:
-        """A package name or a list of them, as a tuple. An empty list is valid:
-        it means the tools come with the base system."""
-        names = [value] if isinstance(value, str) else value
-        if not isinstance(names, list) or not all(isinstance(n, str) and n.strip() for n in names):
-            raise AnsibleFilterError(
-                f"'{name}' must be a package name or a list of package names, got {value!r}."
-            )
-        return tuple(names)
 
     @property
     def filesystems(self) -> list:

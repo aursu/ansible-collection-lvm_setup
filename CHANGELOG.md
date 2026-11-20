@@ -4,6 +4,17 @@ All notable changes to `aursu.lvm_setup` are documented here.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-11-20
+
+### Changed
+
+- **The package-name check comes from `aursu.general`.** `RequiredPackages` validated package
+  names with a private `_package_list`; the same rule now lives in `aursu.general`'s
+  `plugins/plugin_utils/packages.py` (`PackageNames`), shared with the other collections that
+  install packages, and `RequiredPackages` imports it. Behaviour and messages are unchanged -
+  the existing `required_packages` tests pass untouched. Requires `aursu.general >= 1.9.0`;
+  CI installs it next to the collection for the unit tests.
+
 ## [1.5.0] - 2026-11-20
 
 ### Changed - read this before upgrading
@@ -238,6 +249,7 @@ answers ICMP while refusing every TCP port. On a guest with no console there is 
 
 Baseline for this changelog; earlier releases are recorded in the git history only.
 
+[1.6.0]: https://github.com/aursu/ansible-collection-lvm_setup/releases/tag/v1.6.0
 [1.5.0]: https://github.com/aursu/ansible-collection-lvm_setup/releases/tag/v1.5.0
 [1.4.0]: https://github.com/aursu/ansible-collection-lvm_setup/releases/tag/v1.4.0
 [1.3.0]: https://github.com/aursu/ansible-collection-lvm_setup/releases/tag/v1.3.0
