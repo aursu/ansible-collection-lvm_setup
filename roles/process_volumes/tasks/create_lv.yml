@@ -2,9 +2,11 @@
   ansible.builtin.set_fact:
     lv_path: "/dev/{{ lv.vg }}/{{ lv.name }}"
 
+# pvs too: a volume pinned with `pvs:` is checked against the free space on
+# those physical volumes, not on the whole group.
 - name: Get current LVM info
   aursu.general.lvm_info:
-    filter: vgs,lvs
+    filter: all
   register: lvm_info
 
 - debug: var=lvm_info
@@ -30,6 +32,7 @@
     vg: "{{ lv.vg }}"
     lv: "{{ lv.name }}"
     size: "{{ lv.size }}"
+    pvs: "{{ lv.pvs | default(omit) }}"
     shrink: false
     resizefs: false
   when: lv_plan.action == "create"

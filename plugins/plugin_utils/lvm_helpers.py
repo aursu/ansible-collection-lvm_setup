@@ -262,6 +262,10 @@ class PhysicalVolume:
     def path(self) -> str:
         return self._path
 
+    @property
+    def pv_free(self) -> float:
+        return to_mib(self._pv_free) if self._pv_free else 0.0
+
     def validate_group(self, vg_name: str) -> bool:
         """
         Validate whether the PV is suitable for use in the given VG.
@@ -326,6 +330,7 @@ class LogicalVolume:
         self._fs: Optional[str] = None
         self._mount: Optional[str] = None
         self._opts: Optional[str] = None
+        self._pvs: Optional[Any] = None
 
         self._path: Optional[str] = None
         # device mapper path
@@ -479,6 +484,26 @@ class LogicalVolume:
                 )
         return True
 
+    def _set_pvs_meta(self, lv_data):
+        self._pvs = self._get_field_meta(lv_data, "pvs")
+
+    @property
+    def pvs(self) -> Optional[list[str]]:
+        """Physical volumes the LV is allocated on. None means anywhere in the VG."""
+        return list(self._pvs) if isinstance(self._pvs, list) and self._pvs else None
+
+    def validate_pvs(self):
+        if self._pvs is None:
+            return True
+        if not isinstance(self._pvs, list) or not self._pvs:
+            raise AnsibleFilterError(f"Volume '{self.name}': 'pvs' must be a non-empty list of physical volume paths.")
+        for pv in self._pvs:
+            if not isinstance(pv, str) or not os.path.isabs(pv):
+                raise AnsibleFilterError(f"Volume '{self.name}': physical volume {pv!r} must be an absolute path.")
+        if len(set(self._pvs)) != len(self._pvs):
+            raise AnsibleFilterError(f"Volume '{self.name}': 'pvs' lists a physical volume more than once.")
+        return True
+
     def from_metadata(self, lv_data: dict[str, str]) -> None:
         if not isinstance(lv_data, dict):
             raise AnsibleFilterError(f"Volume entry must be a dictionary{self._msg_for}. Found: {lv_data}")
@@ -489,6 +514,7 @@ class LogicalVolume:
         self._set_filesystem_meta(lv_data)
         self._set_mountpoint_meta(lv_data)
         self._set_opts_meta(lv_data)
+        self._set_pvs_meta(lv_data)
 
         self.validate_name()
         self.validate_group()
@@ -503,6 +529,7 @@ class LogicalVolume:
         self.validate_filesystem()
         self.validate_mountpoint()
         self.validate_opts()
+        self.validate_pvs()
 
         return True
 
@@ -625,6 +652,7 @@ class VolumeGroup:
         volume.validate_filesystem()
         volume.validate_mountpoint()
         volume.validate_opts()
+        volume.validate_pvs()
 
         self._volumes.append(volume)
 
@@ -741,14 +769,29 @@ class VolumeGroup:
         plan = volume.plan() if volume.is_device_attached() else volume.plan_template()
 
         if self.has_state():
+            # With 'pvs' the space that counts is on those PVs, not in the whole
+            # VG. Membership is checked even for an existing LV, so a typo in
+            # 'pvs' fails now rather than at the next create.
+            free = self.free_on(volume.pvs) if volume.pvs else self.state.vg_free
             if volume.name not in self.state.lvs:
-                if volume.lv_size > self.state.vg_free:
+                if volume.lv_size > free:
+                    where = f"physical volume(s) {', '.join(volume.pvs)}" if volume.pvs else f"VG '{self.name}'"
                     raise AnsibleFilterError(
-                        f"Not enough free space ({self.state._vg_free}) in VG '{self.name}' "
+                        f"Not enough free space ({free:.2f} MiB) on {where} "
                         f"to create LV '{volume.name}' with size {volume.size}"
                     )
                 plan["action"] = "create"
         return plan
+
+    def free_on(self, paths: list[str]) -> float:
+        """Free MiB on the given PVs, every one of which must belong to this VG."""
+        members = self.state.pvs if self.has_state() else self.pvs
+        foreign = [path for path in paths if path not in members]
+        if foreign:
+            raise AnsibleFilterError(
+                f"Physical volume(s) {', '.join(foreign)} not part of volume group '{self.name}'."
+            )
+        return sum(members[path].pv_free for path in paths)
 
 class VolumeInput:
     def __init__(self, volumes: list[dict]):
