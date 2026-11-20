@@ -3,6 +3,15 @@
     process_volumes: "{{ volumes is defined and volumes | length > 0 }}"
 
 - block:
+    # The filter checks each volume itself, so an unsupported filesystem fails
+    # here with the collection's usual message, before anything is installed.
+    - name: Ensure the LVM and filesystem tools are installed
+      ansible.builtin.package:
+        name: >-
+          {{ volumes | aursu.lvm_setup.required_packages(process_volumes_packages,
+                                                          process_volumes_filesystem_packages) }}
+        state: present
+
     - name: Validate input and prerequisites
       import_tasks: validate.yml
 

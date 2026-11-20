@@ -18,12 +18,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   |---|---|---|
   | `process_disks` | `parted` | first task |
   | `process_lvm` | `lvm2`, `parted` | first task (it reads the partition table too) |
-  | `process_volumes` | `lvm2` + the mkfs package of each filesystem the volumes declare | after the input check, before the first `lvm_info` |
+  | `process_volumes` | `lvm2` + the mkfs package of each filesystem the volumes declare | first task |
 
   The lists are role defaults (`process_disks_packages`, `process_lvm_packages`,
   `process_volumes_packages`, `process_volumes_filesystem_packages`). The names are the same on EL
-  and Ubuntu; override them where a platform differs. `process_volumes` installs filesystem tools only for the
-  filesystems actually requested, so a run with only `xfs` volumes never asks for `btrfs-progs`.
+  and Ubuntu; override them where a platform differs. A filesystem maps to one package name or a
+  list of them. `process_volumes` installs filesystem tools only for the filesystems actually
+  requested, so a run with only `xfs` volumes never asks for `btrfs-progs`.
+
+### Added
+
+- **Filter `required_packages`** (`plugins/filter/required_packages.py`, logic in
+  `plugins/plugin_utils/package_helpers.py`): the base packages plus the package(s) of each
+  filesystem the volumes declare, deduplicated in a stable order. Each volume is checked as the
+  rest of the collection checks it, so an unsupported filesystem fails with the usual message,
+  and a supported one missing from the map fails naming it. `process_volumes` uses it; it replaces
+  a `selectattr | map | unique | map('extract')` chain that could not be unit-tested. 13 tests.
 
   This is a minor release, not a patch, because the roles now change the package set of the host.
   Installing a package can run its maintainer scripts - `lvm2` triggers an initramfs rebuild on

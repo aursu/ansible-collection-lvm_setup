@@ -70,8 +70,9 @@ listed PVs (that needs `devices` from `lvm_info`), and it does not extend volume
 ```yaml
 lvm_mount_opts_default: defaults,nofail
 
-# Installed after the input check, before the first LVM call: lvm2, plus the
-# mkfs package of each filesystem the volumes declare (only those).
+# Installed as the first step: lvm2, plus the mkfs package(s) of each
+# filesystem the volumes declare (only those) - see the required_packages
+# filter. A filesystem maps to one package name or a list of them.
 process_volumes_packages:
   - lvm2
 process_volumes_filesystem_packages:

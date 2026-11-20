@@ -21,6 +21,7 @@ This collection includes filter plugins for validating input and planning storag
 
 - `validate_partitions`, `partition_path`, `partition_paths`
 - `validate_lvm_partition`, `validate_pvs`, `validate_vg`, `validate_volume`, `validate_mount`
+- `required_packages` - OS packages a set of volumes needs (since 1.5.0)
 - Utility filters: `to_mib`, `mib`
 
 ## Example Playbook

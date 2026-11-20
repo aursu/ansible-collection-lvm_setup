@@ -4,16 +4,6 @@
       - volumes | aursu.lvm_setup.validate_volumes_input
     fail_msg: "Invalid structure in 'volumes' input."
 
-# After the input check, which rejects an unsupported filesystem with a clear
-# message; before the first call that needs lvm2.
-- name: Ensure the LVM and filesystem tools are installed
-  ansible.builtin.package:
-    name: >-
-      {{ process_volumes_packages
-         + (volumes | selectattr('filesystem', 'defined') | map(attribute='filesystem')
-            | unique | map('extract', process_volumes_filesystem_packages) | list) }}
-    state: present
-
 - name: Get current LVM info
   aursu.general.lvm_info:
     filter: vgs,lvs
