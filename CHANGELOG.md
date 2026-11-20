@@ -4,6 +4,31 @@ All notable changes to `aursu.lvm_setup` are documented here.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-20
+
+### Changed - read this before upgrading
+
+- **Each role now installs the packages whose tools it calls.** Until now the roles called
+  `parted`, `pvs`/`vgs`/`lvs`/`lvcreate` and `mkfs.*` and installed none of them. A host whose root
+  is not on LVM usually has no `lvm2`, and the run failed half-way: on 2026-11-20 `process_disks`
+  created a partition, then `process_lvm` died with
+  `Failed to find required executable "pvs"`.
+
+  | Role | Installs (default) | Where |
+  |---|---|---|
+  | `process_disks` | `parted` | first task |
+  | `process_lvm` | `lvm2`, `parted` | first task (it reads the partition table too) |
+  | `process_volumes` | `lvm2` + the mkfs package of each filesystem the volumes declare | after the input check, before the first `lvm_info` |
+
+  The lists are role defaults (`process_disks_packages`, `process_lvm_packages`,
+  `process_volumes_packages`, `process_volumes_filesystem_packages`). The names are the same on EL
+  and Ubuntu; override them where a platform differs. `process_volumes` installs filesystem tools only for the
+  filesystems actually requested, so a run with only `xfs` volumes never asks for `btrfs-progs`.
+
+  This is a minor release, not a patch, because the roles now change the package set of the host.
+  Installing a package can run its maintainer scripts - `lvm2` triggers an initramfs rebuild on
+  Ubuntu - so a host with a full `/boot` fails here, at the install, instead of later at `pvs`.
+
 ## [1.4.0] - 2026-11-20
 
 ### Added
@@ -203,5 +228,6 @@ answers ICMP while refusing every TCP port. On a guest with no console there is 
 
 Baseline for this changelog; earlier releases are recorded in the git history only.
 
+[1.5.0]: https://github.com/aursu/ansible-collection-lvm_setup/releases/tag/v1.5.0
 [1.4.0]: https://github.com/aursu/ansible-collection-lvm_setup/releases/tag/v1.4.0
 [1.3.0]: https://github.com/aursu/ansible-collection-lvm_setup/releases/tag/v1.3.0

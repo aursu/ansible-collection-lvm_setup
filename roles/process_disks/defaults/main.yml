@@ -1,0 +1,6 @@
+---
+# Packages providing the tools this role calls: parted, for
+# community.general.parted. Same name on EL and Ubuntu; override for a
+# platform where it differs.
+process_disks_packages:
+  - parted

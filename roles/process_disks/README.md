@@ -29,6 +29,14 @@ partitions:
       size: 100g
 ```
 
+## Role Defaults
+
+```yaml
+# Installed as the first step: parted, for community.general.parted.
+process_disks_packages:
+  - parted
+```
+
 ## Author
 
 Alexander Ursu ([alexander.ursu@gmail.com](mailto:alexander.ursu@gmail.com))

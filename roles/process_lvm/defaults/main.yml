@@ -1,0 +1,8 @@
+---
+# Packages providing the tools this role calls: lvm2 for pvs/vgs/lvs
+# (aursu.general.lvm_info) and community.general.lvg, parted for the
+# partition-table check. Same names on EL and Ubuntu; override for a platform
+# where they differ.
+process_lvm_packages:
+  - lvm2
+  - parted

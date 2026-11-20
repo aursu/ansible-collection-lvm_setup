@@ -3,6 +3,11 @@
     process_partitions: "{{ partitions is defined and partitions | length > 0 }}"
 
 - block:
+    - name: Ensure the partitioning tools are installed
+      ansible.builtin.package:
+        name: "{{ process_disks_packages }}"
+        state: present
+
     - name: Validate input and prerequisites
       import_tasks: validate_devs.yml
       when: validate_devs | default(true)

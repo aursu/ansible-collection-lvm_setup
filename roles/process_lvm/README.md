@@ -29,6 +29,16 @@ partitions:
 volume_group: data
 ```
 
+## Role Defaults
+
+```yaml
+# Installed as the first step: lvm2 for pvs/vgs/lvs and community.general.lvg,
+# parted for the partition-table check.
+process_lvm_packages:
+  - lvm2
+  - parted
+```
+
 ## Author
 
 Alexander Ursu ([alexander.ursu@gmail.com](mailto:alexander.ursu@gmail.com))
