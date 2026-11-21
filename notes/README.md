@@ -10,3 +10,4 @@ Not part of the published collection (`build_ignore`).
 | [01](01-pvs-pinning.md) | 1.4.0 | `pvs:` pins an LV to named PVs; free space counted on them |
 | [02](02-role-packages.md) | 1.5.0 | Each role installs the packages it calls; filter `required_packages` |
 | [03](03-shared-package-check.md) | 1.6.0 | The package-name check comes from `aursu.general` |
+| [04](04-mountpoint-mode.md) | 1.6.1 | An existing mount point keeps its mode; created `0755` only when missing |

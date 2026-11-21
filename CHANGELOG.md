@@ -4,6 +4,17 @@ All notable changes to `aursu.lvm_setup` are documented here.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-11-21
+
+### Fixed
+
+- **`process_volumes` no longer resets the mode of an existing mount point.** "Ensure mount point
+  exists" set `0755` on every run. Once a volume is mounted, that path is the root of its
+  filesystem, and its mode belongs to the application: dockerd keeps `/var/lib/docker` at `0710`,
+  and a run planned `0710 -> 0755`, opening Docker's data to every local user (found on a dry run,
+  2026-11-21). The mount point is now created with `0755` only when it does not exist; an existing
+  directory is left untouched. A path that exists but is not a directory still fails as before.
+
 ## [1.6.0] - 2026-11-20
 
 ### Changed
