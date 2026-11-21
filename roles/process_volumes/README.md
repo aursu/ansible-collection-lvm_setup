@@ -37,7 +37,7 @@ volumes:
 | `vg` | yes | Volume group it belongs to. |
 | `size` | yes | Size, e.g. `200g`. |
 | `filesystem` | no | One of `ext4`, `xfs`, `btrfs`. Omit to create the LV without formatting it. |
-| `mountpoint` | no | Absolute path. Omit to create the volume and leave mounting to something else. |
+| `mountpoint` | no | Absolute path. Created (mode `0755`) when missing; an existing directory is left as it is - its owner and mode are the application's (dockerd keeps `/var/lib/docker` at `0710`). Omit to create the volume and leave mounting to something else. |
 | `opts` | no | Mount options written to `/etc/fstab`, e.g. `defaults,nofail,noatime`. Aliased as `options`. Defaults to `lvm_mount_opts_default`. |
 | `pvs` | no | Non-empty list of physical volume paths the LV is created on, e.g. `[/dev/nvme0n1p4]`. Omit to let LVM allocate anywhere in the VG. See below. |
 

@@ -45,12 +45,28 @@
     - lv.filesystem is defined
     - lv_plan.action in ["create", "format"]
 
-- name: Ensure mount point exists
+# Created when missing, never re-moded. Once the volume is mounted this path is
+# the root of its filesystem, and its mode belongs to whatever uses it: dockerd
+# keeps /var/lib/docker at 0710, and a forced 0755 would open it to every local
+# user. A path that exists but is not a directory still reaches the file module
+# and fails there.
+- name: Read the mount point {{ lv.mountpoint | default('(no mountpoint)') }}
+  ansible.builtin.stat:
+    path: "{{ lv.mountpoint }}"
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  register: lv_mountpoint
+  when: lv.mountpoint is defined
+
+- name: Create the mount point {{ lv.mountpoint | default('(no mountpoint)') }}
   ansible.builtin.file:
     path: "{{ lv.mountpoint }}"
     state: directory
     mode: '0755'
-  when: lv.mountpoint is defined
+  when:
+    - lv.mountpoint is defined
+    - not (lv_mountpoint.stat.isdir | default(false))
 
 # The static mount table, which the live one cannot stand in for: `nofail` is a
 # directive to the systemd fstab generator rather than a kernel mount option, so
